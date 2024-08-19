@@ -23,7 +23,11 @@ export abstract class OrderCanceler {
         orderIds: BigNumber[]
     ): Promise<void> {
         try {
-            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+            const orderbook = new ethers.Contract(
+                orderbookAddress,
+                orderbookAbi.abi,
+                providerOrSigner
+            );
 
             const tx = await orderbook.batchCancelOrders(orderIds);
             await tx.wait();
@@ -41,9 +45,14 @@ export abstract class OrderCanceler {
         orderIds: BigNumber[]
     ): Promise<BigNumber> {
         try {
-            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+            const orderbook = new ethers.Contract(
+                orderbookAddress,
+                orderbookAbi.abi,
+                providerOrSigner
+            );
 
-            const gasEstimate = await orderbook.estimateGas.batchCancelOrders(orderIds);
+            const gasEstimate =
+                await orderbook.estimateGas.batchCancelOrders(orderIds);
             return gasEstimate;
         } catch (e: any) {
             if (!e.error) {
@@ -115,7 +124,7 @@ export abstract class OrderCanceler {
                 orderbookAddress,
                 activeOrders.orderIds
             );
-            
+
             return activeOrders;
         } catch (e: any) {
             if (!e.error) {
@@ -151,8 +160,8 @@ export abstract class OrderCanceler {
                 orderbookAddress,
                 activeOrders.orderIds
             );
-            
-            return activeOrders; 
+
+            return activeOrders;
         } catch (e: any) {
             if (!e.error) {
                 throw e;

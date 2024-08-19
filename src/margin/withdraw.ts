@@ -16,10 +16,20 @@ export abstract class MarginWithdraw {
         decimals: number
     ): Promise<ContractReceipt> {
         try {
-            const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
-    
-            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
-            const tx = await marginAccount.withdraw(formattedAmount, tokenAddress);
+            const marginAccount = new ethers.Contract(
+                marginAccountAddress,
+                marginAccountAbi.abi,
+                providerOrSigner
+            );
+
+            const formattedAmount = ethers.utils.parseUnits(
+                amount.toString(),
+                decimals
+            );
+            const tx = await marginAccount.withdraw(
+                formattedAmount,
+                tokenAddress
+            );
             return await tx.wait();
         } catch (e: any) {
             if (!e.error) {

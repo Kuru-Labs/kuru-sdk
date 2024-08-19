@@ -23,7 +23,11 @@ export abstract class OrderBatcher {
         marketParams: MarketParams,
         batchUpdate: BATCH
     ): Promise<void> {
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
         // Initialize arrays for buy and sell prices and sizes
         const buyPrices: BigNumber[] = [];
@@ -33,8 +37,14 @@ export abstract class OrderBatcher {
 
         // Separate the limit orders into buy and sell arrays
         for (const order of batchUpdate.limitOrders) {
-            const priceBn: BigNumber = ethers.utils.parseUnits(order.price.toString(), log10BigNumber(marketParams.pricePrecision));
-            const sizeBn: BigNumber = ethers.utils.parseUnits(order.size.toString(), log10BigNumber(marketParams.sizePrecision));
+            const priceBn: BigNumber = ethers.utils.parseUnits(
+                order.price.toString(),
+                log10BigNumber(marketParams.pricePrecision)
+            );
+            const sizeBn: BigNumber = ethers.utils.parseUnits(
+                order.size.toString(),
+                log10BigNumber(marketParams.sizePrecision)
+            );
 
             if (order.isBuy) {
                 buyPrices.push(priceBn);

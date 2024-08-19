@@ -15,9 +15,16 @@ export abstract class MarginBalance {
         tokenAddress: string
     ): Promise<number> {
         try {
-            const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
-    
-            const balance = await marginAccount.getBalance(userAddress, tokenAddress);
+            const marginAccount = new ethers.Contract(
+                marginAccountAddress,
+                marginAccountAbi.abi,
+                providerOrSigner
+            );
+
+            const balance = await marginAccount.getBalance(
+                userAddress,
+                tokenAddress
+            );
             return parseFloat(ethers.utils.formatEther(balance));
         } catch (e: any) {
             if (!e.error) {

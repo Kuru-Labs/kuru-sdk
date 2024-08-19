@@ -21,7 +21,10 @@ async function main() {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
+    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
+        provider,
+        contractAddress
+    );
 
     let txIndex = 0;
     const historicData: HistoricData[] = [];
@@ -30,15 +33,21 @@ async function main() {
     fs.createReadStream(path.resolve(__dirname, "billy_trades.csv"))
         .pipe(csvParser())
         .on("data", (data) => {
-            const isBuy = data.SWAP_FROM_MINT === 'So11111111111111111111111111111111111111112';
-            let size = isBuy ? parseFloat(parseFloat(data.SWAP_FROM_AMOUNT).toFixed(6)) : parseFloat((parseFloat(data.SWAP_FROM_AMOUNT)/100).toFixed(2));
+            const isBuy =
+                data.SWAP_FROM_MINT ===
+                "So11111111111111111111111111111111111111112";
+            let size = isBuy
+                ? parseFloat(parseFloat(data.SWAP_FROM_AMOUNT).toFixed(6))
+                : parseFloat(
+                      (parseFloat(data.SWAP_FROM_AMOUNT) / 100).toFixed(2)
+                  );
             if (!isBuy && size == 0) {
                 size = 1;
             }
             historicData.push({
                 BLOCK_TIMESTAMP: parseInt(data.BLOCK_TIMESTAMP),
                 SWAP_FROM_AMOUNT: size,
-                SWAP_FROM_MINT: data.SWAP_FROM_MINT,
+                SWAP_FROM_MINT: data.SWAP_FROM_MINT
             });
         })
         .on("end", async () => {
@@ -56,14 +65,19 @@ async function main() {
                         {
                             size: historicData[txIndex].SWAP_FROM_AMOUNT,
                             approveTokens: true,
-                            isBuy: historicData[txIndex].SWAP_FROM_MINT === 'So11111111111111111111111111111111111111112',
-                            fillOrKill: false,
+                            isBuy:
+                                historicData[txIndex].SWAP_FROM_MINT ===
+                                "So11111111111111111111111111111111111111112",
+                            fillOrKill: false
                         }
                     );
 
                     txIndex += 1;
                 } catch (error) {
-                    console.error(`Transaction failed for index ${txIndex}, retrying...`, error);
+                    console.error(
+                        `Transaction failed for index ${txIndex}, retrying...`,
+                        error
+                    );
                     continue; // Retry the same transaction
                 }
             }

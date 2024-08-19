@@ -26,12 +26,12 @@ export abstract class PathFinder {
             route: {
                 path: [],
                 tokenIn: "",
-                tokenOut: "",
+                tokenOut: ""
             },
             isBuy: [],
             nativeSend: [],
             output: 0,
-            feeInBase: 0,
+            feeInBase: 0
         };
 
         let bestOutput = 0;
@@ -69,7 +69,7 @@ function computeAllRoutes(
             allPaths.push({
                 path: [...currentPath, pool],
                 tokenIn: startTokenIn,
-                tokenOut,
+                tokenOut
             });
         } else if (maxHops > 1) {
             computeAllRoutes(
@@ -154,7 +154,7 @@ async function computeRouteInput(
         output,
         nativeSend,
         isBuy,
-        feeInBase,
+        feeInBase
     };
 }
 
@@ -212,7 +212,7 @@ async function computeRouteOutput(
         output,
         nativeSend,
         isBuy,
-        feeInBase,
+        feeInBase
     };
 }
 

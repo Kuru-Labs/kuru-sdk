@@ -5,7 +5,6 @@ import * as KuruConfig from "../config.json";
 
 const { rpcUrl, contractAddress } = KuruConfig;
 
-
 export interface OrderBookData {
     asks: number[][];
     bids: Record<string, string>;
@@ -21,28 +20,49 @@ class OrderbookWatcher {
         setInterval(async () => {
             try {
                 const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-                const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
+                const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
+                    provider,
+                    contractAddress
+                );
 
                 const currentOrderbook = await KuruSdk.OrderBook.getL2OrderBook(
                     provider,
                     contractAddress,
                     marketParams
                 );
-                const currentOrderbookJson = JSON.stringify(currentOrderbook, null, 4); // 4-space indentation for pretty printing
+                const currentOrderbookJson = JSON.stringify(
+                    currentOrderbook,
+                    null,
+                    4
+                ); // 4-space indentation for pretty printing
                 if (this.lastOrderbookJson !== currentOrderbookJson) {
-                    const asksArray = currentOrderbook.asks.map(([price, quantity]) => ({ price, quantity }));
-                    const bidsArray = currentOrderbook.bids.map(([price, quantity]) => ({ price, quantity }));
+                    const asksArray = currentOrderbook.asks.map(
+                        ([price, quantity]) => ({ price, quantity })
+                    );
+                    const bidsArray = currentOrderbook.bids.map(
+                        ([price, quantity]) => ({ price, quantity })
+                    );
 
                     const maxBaseSize = Math.max(
-                        ...asksArray.map(a => a.quantity),
-                        ...bidsArray.map(b => b.quantity)
+                        ...asksArray.map((a) => a.quantity),
+                        ...bidsArray.map((b) => b.quantity)
                     );
                     const maxBaseSizeLength = maxBaseSize.toString().length;
-                    const printLine = (price: number, size: number, color: "red" | "green") => {
+                    const printLine = (
+                        price: number,
+                        size: number,
+                        color: "red" | "green"
+                    ) => {
                         const priceStr = price.toString(); // Assuming two decimal places for price
-                        const sizeStr = size.toString().padStart(maxBaseSizeLength, " ");
+                        const sizeStr = size
+                            .toString()
+                            .padStart(maxBaseSizeLength, " ");
                         console.log(
-                          priceStr + " " + `\u001b[3${color === "green" ? 2 : 1}m` + sizeStr + "\u001b[0m"
+                            priceStr +
+                                " " +
+                                `\u001b[3${color === "green" ? 2 : 1}m` +
+                                sizeStr +
+                                "\u001b[0m"
                         );
                     };
 
@@ -68,13 +88,16 @@ class OrderbookWatcher {
                     this.lastOrderbookJson = currentOrderbookJson;
                 }
             } catch (error) {
-                console.error('Failed to fetch or process L2 Orderbook:', error);
+                console.error(
+                    "Failed to fetch or process L2 Orderbook:",
+                    error
+                );
             }
         }, intervalMs);
     }
 }
 
 (async () => {
-    const watcher = new OrderbookWatcher;
+    const watcher = new OrderbookWatcher();
     watcher.startWatching(); // Default polling interval set to 500 milliseconds
 })();

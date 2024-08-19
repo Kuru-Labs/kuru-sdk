@@ -3,8 +3,8 @@ import { ethers } from "ethers";
 import {
     Multicall,
     ContractCallResults,
-    ContractCallContext,
-} from 'ethereum-multicall';
+    ContractCallContext
+} from "ethereum-multicall";
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from "../utils";
@@ -27,44 +27,64 @@ export abstract class IocMulticall {
         provider: ethers.providers.Provider,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: MARKET,
+        order: MARKET
     ): Promise<void> {
         try {
-            const multicall = new Multicall({ ethersProvider: provider, tryAggregate: true });
+            const multicall = new Multicall({
+                ethersProvider: provider,
+                tryAggregate: true
+            });
             const sizeInPrecision = ethers.utils.parseUnits(
                 order.size.toString(),
-                log10BigNumber(order.isBuy ? marketParams.pricePrecision : marketParams.sizePrecision)
+                log10BigNumber(
+                    order.isBuy
+                        ? marketParams.pricePrecision
+                        : marketParams.sizePrecision
+                )
             );
             const sizeInDecimals = ethers.utils.parseUnits(
                 order.size.toString(),
-                order.isBuy ? marketParams.quoteAssetDecimals : marketParams.baseAssetDecimals
+                order.isBuy
+                    ? marketParams.quoteAssetDecimals
+                    : marketParams.baseAssetDecimals
             );
-            
+
             const calls: ContractCallContext[] = [
                 {
-                    reference: 'approveToken',
-                    contractAddress: order.isBuy ? marketParams.quoteAssetAddress : marketParams.baseAssetAddress,
+                    reference: "approveToken",
+                    contractAddress: order.isBuy
+                        ? marketParams.quoteAssetAddress
+                        : marketParams.baseAssetAddress,
                     abi: erc20Abi.abi,
-                    calls: [{
-                        reference: 'approveCall',
-                        methodName: 'approve',
-                        methodParameters: [orderbookAddress, sizeInDecimals]
-                    }]
+                    calls: [
+                        {
+                            reference: "approveCall",
+                            methodName: "approve",
+                            methodParameters: [orderbookAddress, sizeInDecimals]
+                        }
+                    ]
                 },
                 {
-                    reference: 'placeMarketBuy',
+                    reference: "placeMarketBuy",
                     contractAddress: orderbookAddress,
                     abi: orderbookAbi.abi,
-                    calls: [{
-                        reference: 'marketBuyCall',
-                        methodName: order.isBuy ? 'placeAndExecuteMarketBuy' : 'placeAndExecuteMarketSell',
-                        methodParameters: [sizeInPrecision, order.fillOrKill]
-                    }]
+                    calls: [
+                        {
+                            reference: "marketBuyCall",
+                            methodName: order.isBuy
+                                ? "placeAndExecuteMarketBuy"
+                                : "placeAndExecuteMarketSell",
+                            methodParameters: [
+                                sizeInPrecision,
+                                order.fillOrKill
+                            ]
+                        }
+                    ]
                 }
             ];
 
             const results: ContractCallResults = await multicall.call(calls);
-            console.log(results.results.approveToken)
+            console.log(results.results.approveToken);
         } catch (e: any) {
             if (!e.error) {
                 throw e;

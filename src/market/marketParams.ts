@@ -36,7 +36,7 @@ export abstract class ParamFetcher {
             minSize: BigNumber.from(marketParamsData[7]),
             maxSize: BigNumber.from(marketParamsData[8]),
             takerFeeBps: BigNumber.from(marketParamsData[9]),
-            makerFeeBps: BigNumber.from(marketParamsData[10]),
+            makerFeeBps: BigNumber.from(marketParamsData[10])
         };
     }
 }

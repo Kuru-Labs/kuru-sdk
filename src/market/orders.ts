@@ -21,7 +21,11 @@ export abstract class Orders {
         maker: string,
         activeOrdersForMaker: any
     ): Promise<ActiveOrders> {
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
         let data = activeOrdersForMaker;
 
@@ -29,11 +33,13 @@ export abstract class Orders {
             data = await orderbook.getActiveOrdersForAddress(maker);
         }
         let offset = 66;
-        const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
+        const blockNumber = parseInt(data.slice(2, 66), 16); // Extracting the block number from data
         let orderIds: BigNumber[] = [];
-        
+
         while (offset < data.length) {
-            const orderId = BigNumber.from(parseInt(data.slice(offset, offset + 64), 16));
+            const orderId = BigNumber.from(
+                parseInt(data.slice(offset, offset + 64), 16)
+            );
             offset += 64; // Each uint24 is padded to 64 bytes
             orderIds.push(orderId);
         }
@@ -53,7 +59,11 @@ export abstract class Orders {
         orderbookAddress: string,
         orderId: number
     ): Promise<Order> {
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
         const order: Order = await orderbook.s_orders(orderId);
 
@@ -73,20 +83,26 @@ export abstract class Orders {
         maker: string,
         activeBuysForMaker: any
     ): Promise<ActiveOrders> {
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
         let data = activeBuysForMaker;
-        
+
         if (!data) {
             data = await orderbook.getActiveBuysForAddress(maker);
         }
 
         let offset = 66;
-        const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
+        const blockNumber = parseInt(data.slice(2, 66), 16); // Extracting the block number from data
         let orderIds: BigNumber[] = [];
-        
+
         while (offset < data.length) {
-            const orderId = BigNumber.from(parseInt(data.slice(offset, offset + 64), 16));
+            const orderId = BigNumber.from(
+                parseInt(data.slice(offset, offset + 64), 16)
+            );
             offset += 64; // Each uint24 is padded to 64 bytes
             orderIds.push(orderId);
         }
@@ -107,7 +123,11 @@ export abstract class Orders {
         maker: string,
         activeSellsForAddress: any
     ): Promise<ActiveOrders> {
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
         let data = activeSellsForAddress;
 
@@ -116,11 +136,13 @@ export abstract class Orders {
         }
 
         let offset = 66;
-        const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
+        const blockNumber = parseInt(data.slice(2, 66), 16); // Extracting the block number from data
         let orderIds: BigNumber[] = [];
-        
+
         while (offset < data.length) {
-            const orderId = BigNumber.from(parseInt(data.slice(offset, offset + 64), 16));
+            const orderId = BigNumber.from(
+                parseInt(data.slice(offset, offset + 64), 16)
+            );
             offset += 64; // Each uint24 is padded to 64 bytes
             orderIds.push(orderId);
         }

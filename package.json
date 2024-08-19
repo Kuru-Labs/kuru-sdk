@@ -1,29 +1,29 @@
 {
-  "name": "@kuru-labs/kuru-sdk",
-  "version": "1.0.1",
-  "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "compilerOptions": {
-    "module": "CommonJS"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npx tsc"
-  },
-  "keywords": [],
-  "author": "Kuru Labs",
-  "license": "ISC",
-  "dependencies": {
-    "ethereum-multicall": "^2.24.0",
-    "ethers": "5.6.2",
-    "pg": "^8.11.3"
-  },
-  "devDependencies": {
-    "csv-parser": "^3.0.0",
-    "@types/node": "^20.10.5",
-    "@types/pg": "^8.10.9",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
-  }
+    "name": "@kuru-labs/kuru-sdk",
+    "version": "1.0.1",
+    "description": "",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "compilerOptions": {
+        "module": "CommonJS"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "npx tsc"
+    },
+    "keywords": [],
+    "author": "Kuru Labs",
+    "license": "ISC",
+    "dependencies": {
+        "ethereum-multicall": "^2.24.0",
+        "ethers": "5.6.2",
+        "pg": "^8.11.3"
+    },
+    "devDependencies": {
+        "csv-parser": "^3.0.0",
+        "@types/node": "^20.10.5",
+        "@types/pg": "^8.10.9",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.4.5"
+    }
 }

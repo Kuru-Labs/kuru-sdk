@@ -1,55 +1,50 @@
 {
-  "compilerOptions": {
-    /* Basic Options */
-    "target": "es2018",
-    "module": "commonjs",
-    "lib": ["es2018", "dom"],
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "compilerOptions": {
+        /* Basic Options */
+        "target": "es2018",
+        "module": "commonjs",
+        "lib": ["es2018", "dom"],
+        "outDir": "./dist",
+        "rootDir": "./src",
 
-    /* Strict Type-Checking Options */
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
+        /* Strict Type-Checking Options */
+        "strict": true,
+        "noImplicitAny": true,
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "strictBindCallApply": true,
+        "strictPropertyInitialization": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
 
-    /* Additional Checks */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
+        /* Additional Checks */
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
 
-    /* Module Resolution Options */
-    "moduleResolution": "node",
-    "baseUrl": "./",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
+        /* Module Resolution Options */
+        "moduleResolution": "node",
+        "baseUrl": "./",
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
 
-    /* Source Map Options */
-    "sourceMap": true,
+        /* Source Map Options */
+        "sourceMap": true,
 
-    /* Experimental Options */
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
+        /* Experimental Options */
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
 
-    /* Advanced Options */
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
+        /* Advanced Options */
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
 
-    /* Declaration Options */
-    "declaration": true,
-    "declarationDir": "./dist",
-    "declarationMap": true
-  },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
-  ]
+        /* Declaration Options */
+        "declaration": true,
+        "declarationDir": "./dist",
+        "declarationMap": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "**/*.spec.ts"]
 }

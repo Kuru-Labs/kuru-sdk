@@ -21,14 +21,14 @@ export class ERC20 {
             this.contract.name(),
             this.contract.symbol(),
             this.contract.decimals(),
-            this.contract.totalSupply(),
+            this.contract.totalSupply()
         ]);
 
         return {
             name,
             symbol,
             decimals,
-            totalSupply,
+            totalSupply
         };
     }
 }

@@ -5,7 +5,7 @@ import { ContractReceipt, ethers } from "ethers";
 import {
     extractErrorMessage,
     approveToken,
-    estimateApproveGas,
+    estimateApproveGas
 } from "../utils";
 import { RouteOutput } from "../types/pool";
 
