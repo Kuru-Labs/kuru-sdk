@@ -43,11 +43,12 @@ export abstract class TokenSwap {
                 inTokenDecimals
             );
 
+            const clippedOutput = Number(
+                (routeOutput.output * (100 - slippageTolerance)) / 100
+            ).toFixed(outTokenDecimals);
+
             const minTokenOutAmount = ethers.utils.parseUnits(
-                (
-                    (routeOutput.output * (100 - slippageTolerance)) /
-                    100
-                ).toString(),
+                clippedOutput.toString(),
                 outTokenDecimals
             );
 

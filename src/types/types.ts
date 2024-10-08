@@ -85,6 +85,7 @@ export interface VaultParams {
     askPartiallyFilledSize: BigNumber;
     vaultBidOrderSize: BigNumber;
     vaultAskOrderSize: BigNumber;
+    spread: BigNumber;
 }
 
 export interface OrderEvent {

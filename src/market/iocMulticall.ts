@@ -58,7 +58,7 @@ export abstract class IocMulticall {
                     calls: [{
                         reference: 'marketBuyCall',
                         methodName: order.isBuy ? 'placeAndExecuteMarketBuy' : 'placeAndExecuteMarketSell',
-                        methodParameters: [sizeInPrecision, order.fillOrKill]
+                        methodParameters: [sizeInPrecision, order.minAmountOut, order.isMargin, order.fillOrKill]
                     }]
                 }
             ];

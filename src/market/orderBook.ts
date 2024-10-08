@@ -247,9 +247,10 @@ async function getAmmPrices(
         askPartiallyFilledSize: BigNumber.from(vaultParamsData[4]),
         vaultBidOrderSize: BigNumber.from(vaultParamsData[5]),
         vaultAskOrderSize: BigNumber.from(vaultParamsData[6]),
+        spread: BigNumber.from(vaultParamsData[7]),
     };
 
-    let { vaultBestAsk, vaultBestBid, vaultBidOrderSize, vaultAskOrderSize, bidPartiallyFilledSize, askPartiallyFilledSize } = vaultParams;
+    let { vaultBestAsk, vaultBestBid, vaultBidOrderSize, vaultAskOrderSize, bidPartiallyFilledSize, askPartiallyFilledSize, spread } = vaultParams;
 
     let bids: number[][] = [];
     let asks: number[][] = [];
@@ -264,6 +265,7 @@ async function getAmmPrices(
     }
 
     if (vaultParams.kuruAmmVault !== ethers.constants.AddressZero) {
+        let spreadConstant = spread.div(BigNumber.from(10));
         // Add vault bid orders to AMM prices
         for (let i = 0; i < 30; i++) {
             if (vaultBestBid.isZero()) break;
@@ -271,8 +273,8 @@ async function getAmmPrices(
                 parseFloat(ethers.utils.formatUnits(vaultBestBid, 18)),
                 i === 0 ? firstBidOrderSizeAsFloat : vaultBidOrderSizeAsFloat
             ]);
-            vaultBestBid = mulDivRound(vaultBestBid, BigNumber.from(1000), BigNumber.from(1003));
-            vaultBidOrderSize = mulDivRound(vaultBidOrderSize, BigNumber.from(2003), BigNumber.from(2000));
+            vaultBestBid = mulDivRound(vaultBestBid, BigNumber.from(1000), BigNumber.from(1000).add(spreadConstant));
+            vaultBidOrderSize = mulDivRound(vaultBidOrderSize, BigNumber.from(2000).add(spreadConstant), BigNumber.from(2000));
             vaultBidOrderSizeAsFloat = parseFloat(ethers.utils.formatUnits(vaultBidOrderSize, log10BigNumber(marketParams.sizePrecision)));
         }
 
@@ -283,8 +285,8 @@ async function getAmmPrices(
                 parseFloat(ethers.utils.formatUnits(vaultBestAsk, 18)),
                 i === 0 ? firstAskOrderSizeAsFloat : vaultAskOrderSizeAsFloat
             ]);
-            vaultBestAsk = mulDivRound(vaultBestAsk, BigNumber.from(1003), BigNumber.from(1000));
-            vaultAskOrderSize = mulDivRound(vaultAskOrderSize, BigNumber.from(2000), BigNumber.from(2003));
+            vaultBestAsk = mulDivRound(vaultBestAsk, BigNumber.from(1000).add(spreadConstant), BigNumber.from(1000));
+            vaultAskOrderSize = mulDivRound(vaultAskOrderSize, BigNumber.from(2000), BigNumber.from(2000).add(spreadConstant));
             vaultAskOrderSizeAsFloat = parseFloat(ethers.utils.formatUnits(vaultAskOrderSize, log10BigNumber(marketParams.sizePrecision)));
         }
     }

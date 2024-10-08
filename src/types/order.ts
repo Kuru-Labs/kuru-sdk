@@ -11,6 +11,8 @@ export interface MARKET {
     approveTokens: boolean,
     isBuy: boolean,
     size: number,
+    minAmountOut: BigNumber,
+    isMargin: boolean,
     fillOrKill: boolean
 }
 
