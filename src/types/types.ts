@@ -103,3 +103,8 @@ export interface TradeEvent {
     takerAddress: string;
     filledSize: BigNumber;
 }
+
+export interface VaultLiquidityResponse {
+    token1: { address: string; balance: BigNumber };
+    token2: { address: string; balance: BigNumber };
+}

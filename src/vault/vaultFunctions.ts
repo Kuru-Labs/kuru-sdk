@@ -2,7 +2,7 @@
 import { BigNumber, ContractReceipt, ethers } from "ethers";
 import { VaultParamFetcher } from "./vaultParams";
 import { ParamFetcher } from "../market";
-import { MarketParams, VaultParams } from "src/types";
+import { MarketParams, VaultLiquidityResponse, VaultParams } from "src/types";
 
 // ============ Internal Imports ============
 import vaultAbi from "../../abi/Vault.json";
@@ -39,7 +39,7 @@ export abstract class Vault {
         marketAddress: string,
         marginAccountAddress: string,
         signer: ethers.Signer
-    ) {
+    ): Promise<VaultLiquidityResponse> {
         const marginAccount = new ethers.Contract(
             marginAccountAddress,
             marginAbi.abi,
