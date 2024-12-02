@@ -4,6 +4,11 @@ export interface OrderBookData {
     asks: number[][];
     bids: number[][];
     blockNumber: number;
+    vaultParams: VaultParams;
+    manualOrders: {
+        bids: number[][];
+        asks: number[][];
+    };
 }
 
 export interface WssOrderEvent {

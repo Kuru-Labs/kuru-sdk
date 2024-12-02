@@ -30,8 +30,16 @@ class OrderbookWatcher {
                 );
                 const currentOrderbookJson = JSON.stringify(currentOrderbook, null, 4); // 4-space indentation for pretty printing
                 if (this.lastOrderbookJson !== currentOrderbookJson) {
-                    const asksArray = currentOrderbook.asks.map(([price, quantity]) => ({ price, quantity }));
-                    const bidsArray = currentOrderbook.bids.map(([price, quantity]) => ({ price, quantity }));
+                    const asksArray = currentOrderbook.asks
+                        .map(([price, quantity]) => ({ price, quantity }))
+                        .sort((a, b) => a.price - b.price)  // Sort asks ascending
+                        .slice(0, 30)
+                        .sort((a, b) => b.price - a.price);  // Take first 30 asks
+                    
+                    const bidsArray = currentOrderbook.bids
+                        .map(([price, quantity]) => ({ price, quantity }))
+                        .sort((a, b) => b.price - a.price)  // Sort bids descending
+                        .slice(0, 30);  // Take first 30 bids
 
                     const maxBaseSize = Math.max(
                         ...asksArray.map(a => a.quantity),

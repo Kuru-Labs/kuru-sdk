@@ -20,5 +20,7 @@ export function mulDivRound(
     multiplier: BigNumber,
     divisor: BigNumber
 ): BigNumber {
-    return value.mul(multiplier).add(divisor.div(2)).div(divisor);
+    const product = value.mul(multiplier);
+    const halfDenominator = divisor.div(2);
+    return product.add(halfDenominator).div(divisor);
 }

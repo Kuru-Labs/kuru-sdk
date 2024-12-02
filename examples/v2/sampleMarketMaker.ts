@@ -420,7 +420,6 @@ async function updateInventoryBalances(
 }
 
 async function cancelAllOrders(
-    provider: ethers.providers.JsonRpcProvider,
     signer: ethers.Wallet,
     marketParams: MarketParams
 ) {
@@ -508,7 +507,7 @@ async function startMarketMaking() {
         } catch (error) {
             console.error("Error in market making loop:", error);
         }
-    }, 3000);
+    }, 6000);
 
     // Cleanup on process exit
     process.on('SIGINT', async () => {
@@ -516,7 +515,7 @@ async function startMarketMaking() {
         orderTracker.disconnect();
         
         // Cancel all outstanding orders before exit
-        await cancelAllOrders(provider, signer, marketParams);
+        await cancelAllOrders(signer, marketParams);
         
         log('INFO', 'Market maker shutdown complete');
         process.exit();
