@@ -18,6 +18,13 @@ export interface RouteOutput {
     feeInBase: number;
 }
 
+export interface SlippageOptions {
+    defaultSlippageBps: number;
+    tradeSize: number;
+    priceImpactBps: number;
+    ohlcvData: { close: number, volume: number }[];
+}
+
 export interface MarketResponse {
     data: Array<{
         baseasset: string;

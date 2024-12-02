@@ -2,7 +2,7 @@
 import { ContractReceipt, ethers, BigNumber } from "ethers";
 
 // ============ Internal Imports ============
-import { TransactionOptions } from "../types";
+import { TransactionOptions, SlippageOptions } from "../types";
 import {
     extractErrorMessage,
     approveToken,
@@ -29,7 +29,7 @@ export abstract class TokenSwap {
         routeOutput: RouteOutput,
         tokenInAmount: BigNumber,
         minTokenOutAmount: BigNumber,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const signer = router.signer;
         const address = await signer.getAddress();
@@ -95,6 +95,7 @@ export abstract class TokenSwap {
      * @param approveTokens - Whether to approve token spending before the swap.
      * @param approvalCallback - Callback function for approval transaction hash.
      * @param txOptions - Optional transaction parameters.
+     * @param slippageOptions - Optional slippage options.
      * @returns A promise that resolves to the transaction receipt.
      */
     static async swap(
@@ -107,7 +108,8 @@ export abstract class TokenSwap {
         slippageTolerance: number,
         approveTokens: boolean,
         approvalCallback: (txHash: string | null) => void,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
+        slippageOptions?: SlippageOptions
     ): Promise<ContractReceipt> {
         try {
             const router = new ethers.Contract(
@@ -126,6 +128,13 @@ export abstract class TokenSwap {
                 amountIn.toString(),
                 inTokenDecimals
             );
+
+            slippageTolerance = slippageOptions ? calculateDynamicSlippage(
+                slippageOptions.defaultSlippageBps,
+                amountIn,
+                slippageOptions.priceImpactBps,
+                slippageOptions.ohlcvData
+            ) : slippageTolerance;
 
             const clippedOutput = Number(
                 (routeOutput.output * (100 - slippageTolerance)) / 100
