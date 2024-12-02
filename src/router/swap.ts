@@ -88,6 +88,57 @@ export abstract class TokenSwap {
         }
     }
 
+    static async createUnsignedSwapTransaction(
+        fromAddress: string,
+        routerAddress: string,
+        routeOutput: RouteOutput,
+        amountIn: number,
+        inTokenDecimals: number,
+        outTokenDecimals: number,
+        slippageTolerance: number,
+    ): Promise<ContractReceipt> {
+        try {
+            const router = new ethers.Contract(
+                routerAddress,
+                routerAbi.abi,
+            );
+
+            const tokenInAmount = ethers.utils.parseUnits(
+                amountIn.toString(),
+                inTokenDecimals
+            );
+
+            const clippedOutput = Number(
+                (routeOutput.output * (100 - slippageTolerance)) / 100
+            ).toFixed(outTokenDecimals);
+
+            const minTokenOutAmount = ethers.utils.parseUnits(
+                clippedOutput.toString(),
+                outTokenDecimals
+            );
+
+            return await router.callStatic.anyToAnySwap(
+                routeOutput.route.path.map((pool) => pool.orderbook),
+                routeOutput.isBuy,
+                routeOutput.nativeSend,
+                routeOutput.route.tokenIn,
+                routeOutput.route.tokenOut,
+                tokenInAmount,
+                minTokenOutAmount,
+                {
+                    from: fromAddress,
+                    value: routeOutput.nativeSend[0] ? tokenInAmount : 0,
+                }
+            );
+        } catch (e: any) {
+            console.error({ e });
+            if (!e.error) {
+                throw e;
+            }
+            throw extractErrorMessage(e);
+        }
+    }
+
     static async estimateGas(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         routerAddress: string,
