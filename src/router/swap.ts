@@ -1,7 +1,8 @@
 // ============ External Imports ============
-import { ContractReceipt, ethers } from "ethers";
+import { ContractReceipt, ethers, BigNumber } from "ethers";
 
 // ============ Internal Imports ============
+import { TransactionOptions } from "../types";
 import {
     extractErrorMessage,
     approveToken,
@@ -14,6 +15,88 @@ import erc20Abi from "../../abi/IERC20.json";
 import routerAbi from "../../abi/Router.json";
 
 export abstract class TokenSwap {
+    /**
+     * @dev Constructs a transaction for token swapping.
+     * @param router - The router contract instance.
+     * @param routeOutput - The route output containing path and other swap details.
+     * @param tokenInAmount - The amount of input tokens.
+     * @param minTokenOutAmount - The minimum amount of output tokens to receive.
+     * @param txOptions - Optional transaction parameters.
+     * @returns A promise that resolves to the transaction request object.
+     */
+    static async constructSwapTransaction(
+        router: ethers.Contract,
+        routeOutput: RouteOutput,
+        tokenInAmount: BigNumber,
+        minTokenOutAmount: BigNumber,
+        txOptions?: TransactionOptions
+    ): Promise<ethers.providers.TransactionRequest> {
+        const signer = router.signer;
+        const address = await signer.getAddress();
+
+        const data = router.interface.encodeFunctionData("anyToAnySwap", [
+            routeOutput.route.path.map((pool) => pool.orderbook),
+            routeOutput.isBuy,
+            routeOutput.nativeSend,
+            routeOutput.route.tokenIn,
+            routeOutput.route.tokenOut,
+            tokenInAmount,
+            minTokenOutAmount
+        ]);
+
+        const tx: ethers.providers.TransactionRequest = {
+            to: router.address,
+            from: address,
+            data,
+            value: routeOutput.nativeSend[0] ? tokenInAmount : 0,
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        };
+
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit ? signer.estimateGas({
+                ...tx,
+                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+            }) : Promise.resolve(tx.gasLimit),
+            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
+        }
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(
+                    txOptions.priorityFee.toString(),
+                    'gwei'
+                );
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
+            }
+        }
+
+        return tx;
+    }
+
+    /**
+     * @dev Executes a token swap.
+     * @param providerOrSigner - The ethers.js provider or signer to interact with the blockchain.
+     * @param routerAddress - The address of the router contract.
+     * @param routeOutput - The route output containing path and other swap details.
+     * @param amountIn - The amount of input tokens.
+     * @param inTokenDecimals - The decimals of the input token.
+     * @param outTokenDecimals - The decimals of the output token.
+     * @param slippageTolerance - The maximum acceptable slippage.
+     * @param approveTokens - Whether to approve token spending before the swap.
+     * @param approvalCallback - Callback function for approval transaction hash.
+     * @param txOptions - Optional transaction parameters.
+     * @returns A promise that resolves to the transaction receipt.
+     */
     static async swap(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         routerAddress: string,
@@ -23,7 +106,8 @@ export abstract class TokenSwap {
         outTokenDecimals: number,
         slippageTolerance: number,
         approveTokens: boolean,
-        approvalCallback: (txHash: string | null) => void
+        approvalCallback: (txHash: string | null) => void,
+        txOptions?: TransactionOptions
     ): Promise<ContractReceipt> {
         try {
             const router = new ethers.Contract(
@@ -65,20 +149,16 @@ export abstract class TokenSwap {
                 }
             }
 
-            const tx = await router.anyToAnySwap(
-                routeOutput.route.path.map((pool) => pool.orderbook),
-                routeOutput.isBuy,
-                routeOutput.nativeSend,
-                routeOutput.route.tokenIn,
-                routeOutput.route.tokenOut,
+            const tx = await TokenSwap.constructSwapTransaction(
+                router,
+                routeOutput,
                 tokenInAmount,
                 minTokenOutAmount,
-                {
-                    value: routeOutput.nativeSend[0] ? tokenInAmount : 0,
-                }
+                txOptions
             );
 
-            return await tx.wait();
+            const transaction = await router.signer.sendTransaction(tx);
+            return await transaction.wait();
         } catch (e: any) {
             console.error({ e });
             if (!e.error) {
