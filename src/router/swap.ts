@@ -9,6 +9,7 @@ import {
     estimateApproveGas,
 } from "../utils";
 import { RouteOutput } from "../types/pool";
+import { calculateDynamicSlippage } from "../utils";
 
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
@@ -165,6 +166,7 @@ export abstract class TokenSwap {
                 minTokenOutAmount,
                 txOptions
             );
+            console.log(tx);
 
             const transaction = await router.signer.sendTransaction(tx);
             return await transaction.wait();
