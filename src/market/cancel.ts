@@ -11,23 +11,25 @@ import orderbookAbi from "../../abi/OrderBook.json";
 export abstract class OrderCanceler {
     /**
      * @dev Constructs a transaction to cancel multiple orders.
-     * @param orderbook - The orderbook contract instance.
+     * @param signer - The signer instance to interact with the blockchain.
+     * @param orderbookAddress - The address of the order book contract.
      * @param orderIds - An array of order IDs to be cancelled.
      * @param txOptions - Transaction options to be used for the transaction.
      * @returns A promise that resolves to the transaction request object.
      */
     static async constructCancelOrdersTransaction(
-        orderbook: ethers.Contract,
+        signer: ethers.Signer,
+        orderbookAddress: string,
         orderIds: BigNumber[],
         txOptions?: TransactionOptions
     ): Promise<ethers.providers.TransactionRequest> {
-        const signer = orderbook.signer;
         const address = await signer.getAddress();
 
-        const data = orderbook.interface.encodeFunctionData("batchCancelOrders", [orderIds]);
+        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const data = orderbookInterface.encodeFunctionData("batchCancelOrders", [orderIds]);
 
         const tx: ethers.providers.TransactionRequest = {
-            to: orderbook.address,
+            to: orderbookAddress,
             from: address,
             data,
             ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
@@ -82,7 +84,8 @@ export abstract class OrderCanceler {
             const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
             
             const tx = await OrderCanceler.constructCancelOrdersTransaction(
-                orderbook,
+                orderbook.signer,
+                orderbookAddress,
                 orderIds,
                 txOptions
             );
