@@ -17,14 +17,26 @@ export abstract class PathFinder {
         poolFetcher?: PoolFetcher,
         pools?: Pool[]
     ): Promise<RouteOutput> {
+        // Normalize input addresses to lowercase
+        const normalizedTokenIn = tokenIn.toLowerCase();
+        const normalizedTokenOut = tokenOut.toLowerCase();
+
         if (!pools) {
             if (!poolFetcher) {
                 throw new Error("Either pools or poolFetcher must be provided");
             }
-            pools = await poolFetcher.getAllPools(tokenIn, tokenOut);
+            pools = await poolFetcher.getAllPools(normalizedTokenIn, normalizedTokenOut);
+        } else {
+            // Normalize pool addresses
+            pools = pools.map(pool => ({
+                ...pool,
+                orderbook: pool.orderbook.toLowerCase(),
+                baseToken: pool.baseToken.toLowerCase(),
+                quoteToken: pool.quoteToken.toLowerCase()
+            }));
         }
 
-        const routes = computeAllRoutes(tokenIn, tokenOut, pools);
+        const routes = computeAllRoutes(normalizedTokenIn, normalizedTokenOut, pools);
 
         let bestRoute: RouteOutput = {
             route: {
@@ -225,5 +237,8 @@ async function computeRouteOutput(
 }
 
 function involvesToken(pool: Pool, token: string): boolean {
-    return pool.baseToken === token || pool.quoteToken === token;
+    // Make comparison case insensitive
+    const normalizedToken = token.toLowerCase();
+    return pool.baseToken.toLowerCase() === normalizedToken || 
+           pool.quoteToken.toLowerCase() === normalizedToken;
 }
