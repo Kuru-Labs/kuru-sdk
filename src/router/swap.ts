@@ -18,7 +18,8 @@ import routerAbi from "../../abi/Router.json";
 export abstract class TokenSwap {
     /**
      * @dev Constructs a transaction for token swapping.
-     * @param router - The router contract instance.
+     * @param signer - The signer instance.
+     * @param routerAddress - The address of the router contract.
      * @param routeOutput - The route output containing path and other swap details.
      * @param tokenInAmount - The amount of input tokens.
      * @param minTokenOutAmount - The minimum amount of output tokens to receive.
@@ -26,16 +27,17 @@ export abstract class TokenSwap {
      * @returns A promise that resolves to the transaction request object.
      */
     static async constructSwapTransaction(
-        router: ethers.Contract,
+        signer: ethers.Signer,
+        routerAddress: string,
         routeOutput: RouteOutput,
         tokenInAmount: BigNumber,
         minTokenOutAmount: BigNumber,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
-        const signer = router.signer;
         const address = await signer.getAddress();
 
-        const data = router.interface.encodeFunctionData("anyToAnySwap", [
+        const routerInterface = new ethers.utils.Interface(routerAbi.abi);
+        const data = routerInterface.encodeFunctionData("anyToAnySwap", [
             routeOutput.route.path.map((pool) => pool.orderbook),
             routeOutput.isBuy,
             routeOutput.nativeSend,
@@ -46,7 +48,7 @@ export abstract class TokenSwap {
         ]);
 
         const tx: ethers.providers.TransactionRequest = {
-            to: router.address,
+            to: routerAddress,
             from: address,
             data,
             value: routeOutput.nativeSend[0] ? tokenInAmount : 0,
@@ -160,7 +162,8 @@ export abstract class TokenSwap {
             }
 
             const tx = await TokenSwap.constructSwapTransaction(
-                router,
+                router.signer,
+                routerAddress,
                 routeOutput,
                 tokenInAmount,
                 minTokenOutAmount,
