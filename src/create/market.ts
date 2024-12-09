@@ -106,7 +106,10 @@ export class ParamCreator {
         const sizeDecimals = Math.max(this.countDecimals(minSize), sizeDecimalsPower);
         const sizePrecision = ethers.BigNumber.from(Math.pow(10, sizeDecimals));
 
-        const maxSizeInPrecision = this.getMaxSizeAtPrice(ethers.BigNumber.from(pricePrecision), ethers.BigNumber.from(sizePrecision));
+        const maxSizeInPrecision = this.getMaxSizeAtPrice(ethers.utils.parseUnits(
+            currentPrice.toFixed(priceDecimals), 
+            priceDecimals
+        ), ethers.BigNumber.from(sizePrecision));
         const minSizeInPrecision = ethers.utils.parseUnits(minSize.toString(), sizeDecimals);
         return {
             pricePrecision: pricePrecision,
