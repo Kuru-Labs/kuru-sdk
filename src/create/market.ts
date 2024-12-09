@@ -84,21 +84,16 @@ export class ParamCreator {
         if(currentPrice === 0) {
             throw new Error("Current price is too low");
         }
-        console.log("currentPrice", currentPrice);
-        console.log("current price decimals", this.countDecimals(currentPrice));
         // const _maxPriceDecimals = Math.floor(Math.log10((10**9) / maxPrice));
         // if(maxPriceDecimals > 9) 
     
         const priceDecimals = Math.max(this.countDecimals(currentPrice), 2, this.countDecimals(tickSize));
-        console.log("priceDecimals", priceDecimals);
         if(priceDecimals > 9) {
             throw new Error("Price is greater than 10**9");
         }
         const pricePrecision = ethers.BigNumber.from(Math.pow(10, priceDecimals));
-        console.log("tickSize", tickSize);
         const tickSizeString = tickSize.toFixed(priceDecimals);
         const tickSizeInPrecision = ethers.utils.parseUnits(tickSizeString, priceDecimals);
-        console.log("tickSizeInPrecision", tickSizeInPrecision.toString());
         
         // Calculate size precision based on max price * price precision
         const maxPriceWithPrecision = maxPrice * Math.pow(10, priceDecimals);
@@ -149,7 +144,6 @@ export class ParamCreator {
     getMaxSizeAtPrice(price: ethers.BigNumber, sizePrecision: ethers.BigNumber) : ethers.BigNumber {
         const UINT32_MAX = ethers.BigNumber.from(2).pow(32).sub(1);
         const rawMaxSize = UINT32_MAX.mul(sizePrecision).div(price);
-        console.log("rawMaxSize", rawMaxSize.toString());
         // Convert to string to count digits
         const numDigits = rawMaxSize.toString().length;
         
@@ -161,8 +155,7 @@ export class ParamCreator {
 
     calculateMarketCap(price: number, base: number, solPrice: number): string {
         const marketCap = price * base * solPrice * 2;
-        console.log("marketCap", marketCap);
-
+        
         if (marketCap >= 1_000_000_000) {
             return `${(marketCap / 1_000_000_000).toFixed(1)}b`;
         } else if (marketCap >= 1_000_000) {
