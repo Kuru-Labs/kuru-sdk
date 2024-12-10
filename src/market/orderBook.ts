@@ -111,8 +111,8 @@ export abstract class OrderBook {
     const combinedAsks = combinePrices(manualAsks, ammPrices.asks);
 
     // Sort bids and asks
-    combinedBids.sort((a, b) => b[0] - a[0]); // Descending for bids
-    combinedAsks.sort((a, b) => a[0] - b[0]); // Ascending for asks
+    combinedBids.sort((a, b) => b[0] - a[0]);
+    combinedAsks.sort((a, b) => b[0] - a[0]);
 
     return {
       bids: combinedBids,
@@ -195,8 +195,8 @@ export abstract class OrderBook {
     );
 
     // Sort combined orders
-    combinedBids.sort((a, b) => b[0] - a[0]); // Descending
-    combinedAsks.sort((a, b) => a[0] - b[0]); // Ascending
+    combinedBids.sort((a, b) => b[0] - a[0]);
+    combinedAsks.sort((a, b) => b[0] - a[0]);
 
     // Update bids and asks
     newOrderBook.bids = combinedBids;
@@ -275,8 +275,8 @@ export abstract class OrderBook {
     );
 
     // Sort combined orders
-    combinedBids.sort((a, b) => b[0] - a[0]); // Descending
-    combinedAsks.sort((a, b) => a[0] - b[0]); // Ascending
+    combinedBids.sort((a, b) => b[0] - a[0]);
+    combinedAsks.sort((a, b) => b[0] - a[0]);
 
     // Update bids and asks
     newOrderBook.bids = combinedBids;
@@ -392,8 +392,8 @@ export abstract class OrderBook {
       );
   
       // Sort combined orders
-      combinedBids.sort((a, b) => b[0] - a[0]); // Descending
-      combinedAsks.sort((a, b) => a[0] - b[0]); // Ascending
+      combinedBids.sort((a, b) => b[0] - a[0]);
+      combinedAsks.sort((a, b) => b[0] - a[0]);
   
       // Update bids and asks
       newOrderBook.bids = combinedBids;
@@ -445,8 +445,8 @@ export abstract class OrderBook {
       );
   
       // Sort combined orders
-      combinedBids.sort((a, b) => b[0] - a[0]); // Descending
-      combinedAsks.sort((a, b) => a[0] - b[0]); // Ascending
+      combinedBids.sort((a, b) => b[0] - a[0]);
+      combinedAsks.sort((a, b) => b[0] - a[0]);
   
       // Update bids and asks
       newOrderBook.bids = combinedBids;
