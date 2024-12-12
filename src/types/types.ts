@@ -20,6 +20,7 @@ export interface WssOrderEvent {
     blockNumber: BigNumber;
     transactionHash: string;
     triggerTime: number;
+    marketAddress: string;
 }
 
 export interface CanceledOrder {
