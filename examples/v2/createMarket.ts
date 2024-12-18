@@ -1,11 +1,11 @@
 import { ethers } from "ethers";
 import { ParamCreator } from "../../src/create/market";
-import config from "../config.json";
+import {routerAddress, rpcUrl, baseTokenAddress, quoteTokenAddress} from "../config.json";
 
 async function main() {
     // Connect to provider with custom fetch
     const provider = new ethers.providers.JsonRpcProvider(
-        config.rpcUrl,
+        rpcUrl,
         {
             name: "custom",
             chainId: 41454,
@@ -26,13 +26,13 @@ async function main() {
     const paramCreator = new ParamCreator();
 
     // Example parameters - adjust these based on your needs
-    const type = 0; // Market type
-    const baseAssetAddress = config.baseTokenAddress; // Base token address
-    const quoteAssetAddress = config.quoteTokenAddress; // Quote token address
+    const type = 1; // Market type
+    const baseAssetAddress = baseTokenAddress; // Base token address
+    const quoteAssetAddress = quoteTokenAddress; // Quote token address
 
     // Calculate precisions based on current market data
-    const currentQuote = 1000; // Current quote price from trades
-    const currentBase = 20000; // Current base amount from trades
+    const currentQuote = 100000000000; // Current quote price from trades
+    const currentBase = 1; // Current base amount from trades
     const maxPrice = 10; // Maximum expected price
     const tickSize = 0.01; // Minimum price movement
     const minSize = 0.01; // Minimum order size
@@ -49,14 +49,13 @@ async function main() {
     console.log("Tick size", precisions.tickSize.toString());
     console.log("Min size", precisions.minSize.toString());
     console.log("Max size", precisions.maxSize.toString());
-    process.exit(0);
     const takerFeeBps = 30; // 0.3%
     const makerFeeBps = 10; // -0.1% (rebate)
     const kuruAmmSpread = ethers.BigNumber.from(100); // 1%
     try {
         const marketAddress = await paramCreator.deployMarket(
             signer,
-            config.routerAddress,
+            routerAddress,
             type,
             baseAssetAddress,
             quoteAssetAddress,

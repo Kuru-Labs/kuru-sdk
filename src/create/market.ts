@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 
 // ============ Internal Imports ============
 import { TransactionOptions } from "src/types";
-import { extractErrorMessage } from "src/utils";
+import { extractErrorMessage } from "../utils";
 
 // ============ Config Imports ============
 import routerAbi from "../../abi/Router.json";
