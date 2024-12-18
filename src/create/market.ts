@@ -1,7 +1,15 @@
+// ============ External Imports ============
 import { ethers } from "ethers";
 
+// ============ Internal Imports ============
+import { TransactionOptions } from "src/types";
+import { extractErrorMessage } from "src/utils";
+
+// ============ Config Imports ============
+import routerAbi from "../../abi/Router.json";
+
 export class ParamCreator {
-    async deployMarket(
+    static async constructDeployMarketTransaction(
         signer: ethers.Signer,
         routerAddress: string,
         type: number,
@@ -14,28 +22,13 @@ export class ParamCreator {
         maxSize: ethers.BigNumber,
         takerFeeBps: number,
         makerFeeBps: number,
-        kuruAmmSpread: ethers.BigNumber
-    ): Promise<string> {
-        const routerAbi = [
-            "function deployProxy(uint8 _type, address _baseAssetAddress, address _quoteAssetAddress, uint96 _sizePrecision, uint32 _pricePrecision, uint32 _tickSize, uint96 _minSize, uint96 _maxSize, uint256 _takerFeeBps, uint256 _makerFeeBps, uint96 _kuruAmmSpread) returns (address proxy)",
-            "event MarketRegistered(address baseAsset, address quoteAsset, address market, address vaultAddress, uint32 pricePrecision, uint96 sizePrecision, uint32 tickSize, uint96 minSize, uint96 maxSize, uint256 takerFeeBps, uint256 makerFeeBps)"
-        ];
+        kuruAmmSpread: ethers.BigNumber,
+        txOptions?: TransactionOptions
+    ): Promise<ethers.providers.TransactionRequest> {
+        const address = await signer.getAddress();
 
-        const router = new ethers.Contract(routerAddress, routerAbi, signer);
-
-        // Get network data in parallel
-        const [
-            chainId,
-            gasPrice,
-            nonce
-        ] = await Promise.all([
-            signer.getChainId(),
-            signer.getGasPrice(),
-            signer.getTransactionCount()
-        ]);
-
-        // Create transaction data manually
-        const data = router.interface.encodeFunctionData("deployProxy", [
+        const routerInterface = new ethers.utils.Interface(routerAbi.abi);
+        const data = routerInterface.encodeFunctionData("deployProxy", [
             type,
             baseAssetAddress,
             quoteAssetAddress,
@@ -49,34 +42,107 @@ export class ParamCreator {
             kuruAmmSpread
         ]);
 
-        // Create and sign transaction manually using legacy transaction
-        const tx = await signer.sendTransaction({
+        const tx: ethers.providers.TransactionRequest = {
             to: routerAddress,
+            from: address,
             data,
-            nonce,
-            chainId,
-            gasPrice,     // Use gasPrice for legacy transactions
-            type: 0       // Legacy transaction type (pre-EIP-1559)
-        });
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        };
 
-        const receipt = await tx.wait(1);
-        const marketRegisteredLog = receipt.logs.find(
-            log => {
-                try {
-                    const parsedLog = router.interface.parseLog(log);
-                    return parsedLog.name === "MarketRegistered";
-                } catch {
-                    return false;
-                }
-            }
-        );
-        
-        if (!marketRegisteredLog) {
-            throw new Error("MarketRegistered event not found in transaction receipt");
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit ? signer.estimateGas({
+                ...tx,
+                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+            }) : Promise.resolve(tx.gasLimit),
+            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
         }
 
-        const parsedLog = router.interface.parseLog(marketRegisteredLog);
-        return parsedLog.args.market;
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(
+                    txOptions.priorityFee.toString(),
+                    'gwei'
+                );
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
+            }
+        }
+
+        return tx;
+    }
+
+    async deployMarket(
+        signer: ethers.Signer,
+        routerAddress: string,
+        type: number,
+        baseAssetAddress: string,
+        quoteAssetAddress: string,
+        sizePrecision: ethers.BigNumber,
+        pricePrecision: ethers.BigNumber,
+        tickSize: ethers.BigNumber,
+        minSize: ethers.BigNumber,
+        maxSize: ethers.BigNumber,
+        takerFeeBps: number,
+        makerFeeBps: number,
+        kuruAmmSpread: ethers.BigNumber,
+        txOptions?: TransactionOptions
+    ): Promise<string> {
+        const router = new ethers.Contract(routerAddress, routerAbi.abi, signer);
+
+        try {
+            const tx = await ParamCreator.constructDeployMarketTransaction(
+                signer,
+                routerAddress,
+                type,
+                baseAssetAddress,
+                quoteAssetAddress,
+                sizePrecision,
+                pricePrecision,
+                tickSize,
+                minSize,
+                maxSize,
+                takerFeeBps,
+                makerFeeBps,
+                kuruAmmSpread,
+                txOptions
+            );
+
+            const transaction = await signer.sendTransaction(tx);
+            const receipt = await transaction.wait(1);
+
+            const marketRegisteredLog = receipt.logs.find(
+                log => {
+                    try {
+                        const parsedLog = router.interface.parseLog(log);
+                        return parsedLog.name === "MarketRegistered";
+                    } catch {
+                        return false;
+                    }
+                }
+            );
+            
+            if (!marketRegisteredLog) {
+                throw new Error("MarketRegistered event not found in transaction receipt");
+            }
+
+            const parsedLog = router.interface.parseLog(marketRegisteredLog);
+            return parsedLog.args.market;
+        } catch (e: any) {
+            console.log({ e });
+            if (!e.error) {
+                throw e;
+            }
+            throw extractErrorMessage(e);
+        }
     }
 
     calculatePrecisions(quote:number, base:number, maxPrice:number, tickSize:number, minSize:number) {

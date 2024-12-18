@@ -31,10 +31,10 @@ async function main() {
     const quoteAssetAddress = config.quoteTokenAddress; // Quote token address
 
     // Calculate precisions based on current market data
-    const currentQuote = 100; // Current quote price from trades
-    const currentBase = 40000000; // Current base amount from trades
-    const maxPrice = 1; // Maximum expected price
-    const tickSize = 0.001; // Minimum price movement
+    const currentQuote = 1000; // Current quote price from trades
+    const currentBase = 20000; // Current base amount from trades
+    const maxPrice = 10; // Maximum expected price
+    const tickSize = 0.01; // Minimum price movement
     const minSize = 0.01; // Minimum order size
 
     const precisions = paramCreator.calculatePrecisions(
