@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import { MonadDeployer } from "../../src/create/monadDeployer";
 import { monadDeployerAddress, rpcUrl } from "../config.json";
+import { ParamCreator } from "../../src/create/market";
 
 async function main() {
     // Connect to provider with custom fetch
@@ -11,27 +12,40 @@ async function main() {
     }
     const signer = new ethers.Wallet(privateKey, provider);
 
-    // Initialize MonadDeployer SDK
     const monadDeployer = new MonadDeployer();
+    const paramCreator = new ParamCreator();
 
-    // Example token parameters
     const tokenParams = {
         name: "Test Token",
         symbol: "TEST",
-        tokenURI: "ipfs://QmTest",
+        tokenURI: "https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg",
         initialSupply: ethers.utils.parseUnits("1000000", 18), // 1M tokens
         dev: await signer.getAddress(), // Developer address
         supplyToDev: ethers.BigNumber.from(1000), // 10% in basis points (bps)
     };
 
-    // Example market parameters
+    // Calculate market parameters using ParamCreator
+    const currentQuote = 1; // Current quote price
+    const currentBase = 456789; // Current base amount
+    const maxPrice = 10; // Maximum expected price
+    const minSize = 0.01; // Minimum order size
+
+    const precisions = paramCreator.calculatePrecisions(
+        currentQuote,
+        currentBase,
+        maxPrice,
+        minSize,
+        10 // tickSizeBps
+    );
+
+    // Example market parameters using calculated precisions
     const marketParams = {
-        nativeTokenAmount: ethers.utils.parseEther("0.1"), // 0.1 ETH for initial liquidity
-        sizePrecision: ethers.BigNumber.from("1000000"), // 6 decimals
-        pricePrecision: 6,  // 6 decimals
-        tickSize: 1,        // minimum price movement
-        minSize: ethers.BigNumber.from("100000"),  // minimum trade size
-        maxSize: ethers.BigNumber.from("100000000000"), // maximum trade size
+        nativeTokenAmount: ethers.utils.parseEther("1"), // 0.1 ETH for initial liquidity
+        sizePrecision: precisions.sizePrecision,
+        pricePrecision: precisions.pricePrecision,
+        tickSize: precisions.tickSize,
+        minSize: precisions.minSize,
+        maxSize: precisions.maxSize,
         takerFeeBps: 30,    // 0.3%
         makerFeeBps: 10,    // 0.1%
     };

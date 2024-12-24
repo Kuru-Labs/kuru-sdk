@@ -20,8 +20,8 @@ export interface TokenParams {
 export interface PoolParams {
     nativeTokenAmount: ethers.BigNumber;
     sizePrecision: ethers.BigNumber;
-    pricePrecision: number;
-    tickSize: number;
+    pricePrecision: ethers.BigNumber;
+    tickSize: ethers.BigNumber;
     minSize: ethers.BigNumber;
     maxSize: ethers.BigNumber;
     takerFeeBps: number;

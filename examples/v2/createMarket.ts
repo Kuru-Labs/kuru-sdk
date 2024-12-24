@@ -22,18 +22,17 @@ async function main() {
     const quoteAssetAddress = quoteTokenAddress; // Quote token address
 
     // Calculate precisions based on current market data
-    const currentQuote = 100000000000; // Current quote price from trades
-    const currentBase = 1; // Current base amount from trades
+    const currentQuote = 1; // Current quote price from trades
+    const currentBase = 456789; // Current base amount from trades
     const maxPrice = 10; // Maximum expected price
-    const tickSize = 0.01; // Minimum price movement
     const minSize = 0.01; // Minimum order size
 
     const precisions = paramCreator.calculatePrecisions(
         currentQuote,
         currentBase, 
         maxPrice,
-        tickSize,
-        minSize
+        minSize,
+        10
     );
     console.log("Price precision", precisions.pricePrecision.toString());
     console.log("Size precision", precisions.sizePrecision.toString());

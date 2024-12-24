@@ -378,3 +378,143 @@ const customBaseTokens = [
     }
 })();
 ```
+
+## Market Creation
+
+### Standard Market Creation
+
+The standard market creation is more suitable when:
+- You already have existing tokens
+- You want to create markets between any two ERC20 tokens
+- You need more control over the market parameters
+
+Note: The tick size in BPS is recommended to be around 10 BPS for liquid tokens and 100 BPS for long-tail assets. For example, if you are pairing 50 million MON with 10 million USDC, a tick size of 10 BPS is recommended. 
+If you are pairing 1 billion CHOG with say, 100 MON, we recommend a tick size of 100 BPS. This will allow limit orders to be created efficiently. 
+
+To create a standard market using the ParamCreator:
+
+```typescript
+import { ethers } from "ethers";
+import { ParamCreator } from "@kuru-labs/kuru-sdk";
+
+const rpcUrl = <your_rpc_url>; // RPC URL
+const routerAddress = <router_address>; // Router contract address
+const baseTokenAddress = <base_token_address>; // Base token address
+const quoteTokenAddress = <quote_token_address>; // Quote token address
+
+const privateKey = process.env.PRIVATE_KEY as string;
+
+(async () => {
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(privateKey, provider);
+    const paramCreator = new ParamCreator();
+
+    // Calculate market precisions based on current market data
+    const precisions = paramCreator.calculatePrecisions(
+        1, // Current quote price
+        456789, // Current base amount
+        10, // Maximum expected price
+        0.01, // Minimum order size
+        10 // Tick size in basis points (0.1%)
+    );
+
+    try {
+        const marketAddress = await paramCreator.deployMarket(
+            signer,
+            routerAddress,
+            1, // Market type
+            baseTokenAddress,
+            quoteTokenAddress,
+            precisions.sizePrecision,
+            precisions.pricePrecision,
+            precisions.tickSize,
+            precisions.minSize,
+            precisions.maxSize,
+            30, // Taker fee in basis points (0.3%)
+            10, // Maker fee in basis points (0.1%)
+            ethers.BigNumber.from(100) // AMM spread in basis points (1%)
+        );
+
+        console.log("Market deployed at:", marketAddress);
+    } catch (error) {
+        console.error("Error deploying market:", error);
+    }
+})();
+```
+
+### Native-Paired Market Creation
+
+The MonadDeployer method is particularly useful when you want to:
+- Create a new token and its corresponding market in one transaction
+- Pair your token with the chain's native token (e.g., MON)
+- Automatically set up initial liquidity with the native token
+
+Note: For meme tokens, we recommend using the MonadDeployer with 100 BPS tick size.
+
+Usage:
+
+```typescript
+import { ethers } from "ethers";
+import { MonadDeployer, ParamCreator } from "@kuru-labs/kuru-sdk";
+
+const rpcUrl = <your_rpc_url>; // RPC URL
+const monadDeployerAddress = <monad_deployer_address>; // MonadDeployer contract address
+
+const privateKey = process.env.PRIVATE_KEY as string;
+
+(async () => {
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(privateKey, provider);
+    
+    const monadDeployer = new MonadDeployer();
+    const paramCreator = new ParamCreator();
+
+    // Token configuration
+    const tokenParams = {
+        name: "Your Token",
+        symbol: "TOKEN",
+        tokenURI: "https://your-token-uri.com/logo.svg",
+        initialSupply: ethers.utils.parseUnits("1000000", 18), // 1M tokens
+        dev: await signer.getAddress(),
+        supplyToDev: ethers.BigNumber.from(0), // 0% to dev in basis points
+    };
+    //@note: Base amount should be subtracted accordingly to amount of tokens minted to the dev
+    // Calculate market parameters
+    const precisions = paramCreator.calculatePrecisions(
+        1, // Current quote price
+        456789, // Current base amount
+        10, // Maximum expected price
+        0.01, // Minimum order size
+        10 // Tick size in basis points
+    );
+
+    // Market configuration
+    const marketParams = {
+        nativeTokenAmount: ethers.utils.parseEther("1"), // Initial liquidity
+        sizePrecision: precisions.sizePrecision,
+        pricePrecision: precisions.pricePrecision,
+        tickSize: precisions.tickSize,
+        minSize: precisions.minSize,
+        maxSize: precisions.maxSize,
+        takerFeeBps: 30, // 0.3%
+        makerFeeBps: 10, // 0.1%
+    };
+
+    try {
+        const result = await monadDeployer.deployTokenAndMarket(
+            signer,
+            monadDeployerAddress,
+            tokenParams,
+            marketParams
+        );
+
+        console.log("Token deployed at:", result.tokenAddress);
+        console.log("Market deployed at:", result.marketAddress);
+    } catch (error) {
+        console.error("Error deploying token and market:", error);
+    }
+})();
+```
+
+
+

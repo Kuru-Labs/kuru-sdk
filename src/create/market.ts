@@ -9,6 +9,9 @@ import { extractErrorMessage } from "../utils";
 import routerAbi from "../../abi/Router.json";
 
 export class ParamCreator {
+
+    static DEFAULT_PRICE_PRECISION_DECIMALS = 4;
+
     static async constructDeployMarketTransaction(
         signer: ethers.Signer,
         routerAddress: string,
@@ -145,21 +148,79 @@ export class ParamCreator {
         }
     }
 
-    calculatePrecisions(quote:number, base:number, maxPrice:number, tickSize:number, minSize:number) {
-        const currentPrice = Number((quote / base).toFixed(9));
-        if(currentPrice === 0) {
-            throw new Error("Current price is too low");
+    calculatePrecisions(quote:number, base:number, maxPrice:number, minSize:number, tickSizeBps: number = 10) {
+        let currentPrice = quote / base;
+
+        // Convert to string with high precision to detect patterns
+        const priceStr = currentPrice.toFixed(9);
+        
+        // Look for recurring patterns in the decimal part
+        const decimalPart = priceStr.split('.')[1];
+        if (decimalPart) {
+            // Skip leading zeros before looking for patterns
+            let significantStart = 0;
+            while (significantStart < decimalPart.length && decimalPart[significantStart] === '0') {
+                significantStart++;
+            }
+            
+            // Find recurring pattern in the significant digits
+            const significantPart = decimalPart.slice(significantStart);
+            for (let len = 1; len <= 4; len++) {
+                const pattern = significantPart.slice(0, len);
+                const nextPattern = significantPart.slice(len, len * 2);
+                if (pattern === nextPattern && pattern !== '0') {  // Add check to ignore '0' pattern
+                    // Found a recurring pattern, limit it to 2 repetitions
+                    const limitedDecimal = decimalPart.slice(0, significantStart) + pattern.repeat(2);
+                    const newPrice = `${priceStr.split('.')[0]}.${limitedDecimal}`;
+                    currentPrice = Number(newPrice);
+                    break;
+                }
+            }
         }
-        // const _maxPriceDecimals = Math.floor(Math.log10((10**9) / maxPrice));
-        // if(maxPriceDecimals > 9) 
-    
-        const priceDecimals = Math.max(this.countDecimals(currentPrice), 2, this.countDecimals(tickSize));
+
+        if(currentPrice === 0 || !currentPrice) {
+            throw new Error(`Current price is too low: ${currentPrice}`);
+        }
+
+        // Calculate tick size based on provided BPS
+        let tickSize = currentPrice * (tickSizeBps / 10000);
+        // Convert scientific notation to fixed notation for tick size
+        const tickStr = tickSize.toFixed(9);
+        
+        // Handle recurring decimals in tick size the same way
+        const tickDecimalPart = tickStr.split('.')[1];
+        if (tickDecimalPart) {
+            let significantStart = 0;
+            while (significantStart < tickDecimalPart.length && tickDecimalPart[significantStart] === '0') {
+                significantStart++;
+            }
+            
+            const significantPart = tickDecimalPart.slice(significantStart);
+            for (let len = 1; len <= 4; len++) {
+                const pattern = significantPart.slice(0, len);
+                const nextPattern = significantPart.slice(len, len * 2);
+                if (pattern === nextPattern && pattern !== '0') {
+                    const limitedDecimal = tickDecimalPart.slice(0, significantStart) + pattern.repeat(2);
+                    const newTick = `${tickStr.split('.')[0]}.${limitedDecimal}`;
+                    tickSize = Number(newTick);
+                    break;
+                }
+            }
+        }
+        // Use the string representation to count decimals
+        const priceDecimals = Math.max(
+            this.countDecimals(Number(priceStr)), 
+            ParamCreator.DEFAULT_PRICE_PRECISION_DECIMALS, 
+            this.countDecimals(Number(tickStr))
+        );
+
         if(priceDecimals > 9) {
-            throw new Error("Price is greater than 10**9");
+            throw new Error("Price precision exceeds maximum (9 decimals)");
         }
+
+        // Use the fixed notation strings for further calculations
         const pricePrecision = ethers.BigNumber.from(Math.pow(10, priceDecimals));
-        const tickSizeString = tickSize.toFixed(priceDecimals);
-        const tickSizeInPrecision = ethers.utils.parseUnits(tickSizeString, priceDecimals);
+        const tickSizeInPrecision = ethers.utils.parseUnits(tickStr, priceDecimals);
         
         // Calculate size precision based on max price * price precision
         const maxPriceWithPrecision = maxPrice * Math.pow(10, priceDecimals);
