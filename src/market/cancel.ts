@@ -82,7 +82,7 @@ export abstract class OrderCanceler {
         txOptions?: TransactionOptions
     ): Promise<ethers.TransactionReceipt> {
         try {
-            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+            // const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
             
             const signer = await getSigner(providerOrSigner);
             

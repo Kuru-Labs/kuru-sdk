@@ -4,6 +4,7 @@ import { ethers } from "ethers";
 // ============ Internal Imports ============
 import { extractErrorMessage, approveToken, estimateApproveGas } from "../utils";
 import { TransactionOptions } from "src/types";
+import { buildTransaction } from "../utils/transaction";
 
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
@@ -68,7 +69,7 @@ export abstract class MarginDeposit {
         decimals: number,
         txOptions?: TransactionOptions
     ): Promise<ethers.TransactionRequest> {
-        const address = await signer.getAddress();
+
         const marginAccountInterface = new ethers.Interface(marginAccountAbi.abi);
 
         const formattedAmount = ethers.parseUnits(amount.toString(), decimals);
@@ -79,43 +80,13 @@ export abstract class MarginDeposit {
             formattedAmount
         ]);
 
-        const tx: ethers.TransactionRequest = {
-            to: marginAccountAddress,
-            from: address,
+        return buildTransaction(
+            signer,
+            marginAccountAddress,
             data,
-            value: tokenAddress === ethers.ZeroAddress ? formattedAmount : BigInt(0),
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        } as ethers.TransactionRequest;
-
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? (await signer.provider!.getFeeData()).gasPrice : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice + priorityFeeWei;
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
-
-        return tx;
+            tokenAddress === ethers.ZeroAddress ? formattedAmount : BigInt(0),
+            txOptions
+        );
     }
 
     static async estimateGas(

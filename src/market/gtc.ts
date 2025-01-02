@@ -8,6 +8,7 @@ import { MarketParams, LIMIT, TransactionOptions } from "../types";
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
 import { getSigner } from "src/utils/signer";
+import { buildTransaction } from "src/utils/transaction";
 
 export abstract class GTC {
     /**
@@ -103,8 +104,6 @@ export abstract class GTC {
         postOnly: boolean,
         txOptions?: TransactionOptions
     ): Promise<ethers.TransactionRequest> {
-        const address = await signer.getAddress();
-
         const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData("addBuyOrder", [
             price,
@@ -112,40 +111,13 @@ export abstract class GTC {
             postOnly
         ]);
 
-        const tx: ethers.TransactionRequest = {
-            to: orderbookAddress,
-            from: address,
+        const tx = await buildTransaction(
+            signer,
+            orderbookAddress,
             data,
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        } as ethers.TransactionRequest;
-
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? (await signer.provider!.getFeeData()).gasPrice : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice + priorityFeeWei;
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
+            BigInt(0),
+            txOptions
+        );
 
         return tx;
     }
@@ -168,8 +140,6 @@ export abstract class GTC {
         postOnly: boolean,
         txOptions?: TransactionOptions
     ): Promise<ethers.TransactionRequest> {
-        const address = await signer.getAddress();
-
         const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData("addSellOrder", [
             price,
@@ -177,40 +147,13 @@ export abstract class GTC {
             postOnly
         ]);
 
-        const tx: ethers.TransactionRequest = {
-            to: orderbookAddress,
-            from: address,
+        const tx = await buildTransaction(
+            signer,
+            orderbookAddress,
             data,
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        } as ethers.TransactionRequest;
-
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? (await signer.provider!.getFeeData()).gasPrice : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice + priorityFeeWei;
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
+            BigInt(0),
+            txOptions
+        );
 
         return tx;
     }
