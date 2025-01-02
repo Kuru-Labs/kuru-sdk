@@ -18,10 +18,10 @@ export class MarketListener {
 		this.contract.on(
 			"OrderCreated",
 			async (
-				orderId: BigInt,
+				orderId: bigint,
 				ownerAddress: string,
-				size: BigInt,
-				price: BigInt,
+				size: bigint,
+				price: bigint,
 				isBuy: boolean
 			) => {
                 callback({orderId, ownerAddress, size, price, isBuy});
@@ -33,12 +33,12 @@ export class MarketListener {
 		this.contract.on(
 			"Trade",
 			async (
-				orderId: BigInt,
+				orderId: bigint,
 				isBuy: boolean,
-				price: BigInt,
-				updatedSize: BigInt,
+				price: bigint,
+				updatedSize: bigint,
                 takerAddress: string,
-				filledSize: BigInt,
+				filledSize: bigint,
 			) => {
                 callback({orderId, isBuy, price, updatedSize, takerAddress, filledSize});
             }
