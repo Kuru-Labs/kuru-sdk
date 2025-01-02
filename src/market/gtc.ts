@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from "ethers";
+import { ethers } from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from "../utils";
@@ -7,6 +7,7 @@ import { MarketParams, LIMIT, TransactionOptions } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
+import { getSigner } from "src/utils/signer";
 
 export abstract class GTC {
     /**
@@ -19,11 +20,11 @@ export abstract class GTC {
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
     static async placeLimit(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         order: LIMIT,
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         const orderbook = new ethers.Contract(
             orderbookAddress,
             orderbookAbi.abi,
@@ -37,11 +38,11 @@ export abstract class GTC {
             log10BigNumber(marketParams.sizePrecision)
         );
 
-        const priceBn: BigNumber = ethers.utils.parseUnits(
+        const priceBn: bigint = ethers.parseUnits(
             clippedPrice.toString(),
             log10BigNumber(marketParams.pricePrecision)
         );
-        const sizeBn: BigNumber = ethers.utils.parseUnits(
+        const sizeBn: bigint = ethers.parseUnits(
             clippedSize.toString(),
             log10BigNumber(marketParams.sizePrecision)
         );
@@ -52,11 +53,11 @@ export abstract class GTC {
     }
 
     static async estimateGas(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         order: LIMIT
-    ): Promise<BigNumber> {
+    ): Promise<bigint> {
         const orderbook = new ethers.Contract(
             orderbookAddress,
             orderbookAbi.abi,
@@ -70,11 +71,11 @@ export abstract class GTC {
             log10BigNumber(marketParams.sizePrecision)
         );
 
-        const priceBn: BigNumber = ethers.utils.parseUnits(
+        const priceBn: bigint = ethers.parseUnits(
             clippedPrice.toString(),
             log10BigNumber(marketParams.pricePrecision)
         );
-        const sizeBn: BigNumber = ethers.utils.parseUnits(
+        const sizeBn: bigint = ethers.parseUnits(
             clippedSize.toString(),
             log10BigNumber(marketParams.sizePrecision)
         );
@@ -97,21 +98,21 @@ export abstract class GTC {
     static async constructBuyOrderTransaction(
         signer: ethers.Signer,
         orderbookAddress: string,
-        price: BigNumber,
-        size: BigNumber,
+        price: bigint,
+        size: bigint,
         postOnly: boolean,
         txOptions?: TransactionOptions
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
 
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData("addBuyOrder", [
             price,
             size,
             postOnly
         ]);
 
-        const tx: ethers.providers.TransactionRequest = {
+        const tx: ethers.TransactionRequest = {
             to: orderbookAddress,
             from: address,
             data,
@@ -120,14 +121,14 @@ export abstract class GTC {
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
             ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
             ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
+        } as ethers.TransactionRequest;
 
         const [gasLimit, baseGasPrice] = await Promise.all([
             !tx.gasLimit ? signer.estimateGas({
                 ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+                gasPrice: ethers.parseUnits('1', 'gwei'),
             }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+            (!tx.gasPrice && !tx.maxFeePerGas) ? (await signer.provider!.getFeeData()).gasPrice : Promise.resolve(undefined)
         ]);
 
         if (!tx.gasLimit) {
@@ -136,11 +137,11 @@ export abstract class GTC {
 
         if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
             if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
+                const priorityFeeWei = ethers.parseUnits(
                     txOptions.priorityFee.toString(),
                     'gwei'
                 );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+                tx.gasPrice = baseGasPrice + priorityFeeWei;
             } else {
                 tx.gasPrice = baseGasPrice;
             }
@@ -162,21 +163,21 @@ export abstract class GTC {
     static async constructSellOrderTransaction(
         signer: ethers.Signer,
         orderbookAddress: string,
-        price: BigNumber,
-        size: BigNumber,
+        price: bigint,
+        size: bigint,
         postOnly: boolean,
         txOptions?: TransactionOptions
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
 
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData("addSellOrder", [
             price,
             size,
             postOnly
         ]);
 
-        const tx: ethers.providers.TransactionRequest = {
+        const tx: ethers.TransactionRequest = {
             to: orderbookAddress,
             from: address,
             data,
@@ -185,14 +186,14 @@ export abstract class GTC {
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
             ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
             ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
+        } as ethers.TransactionRequest;
 
         const [gasLimit, baseGasPrice] = await Promise.all([
             !tx.gasLimit ? signer.estimateGas({
                 ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+                gasPrice: ethers.parseUnits('1', 'gwei'),
             }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+            (!tx.gasPrice && !tx.maxFeePerGas) ? (await signer.provider!.getFeeData()).gasPrice : Promise.resolve(undefined)
         ]);
 
         if (!tx.gasLimit) {
@@ -201,11 +202,11 @@ export abstract class GTC {
 
         if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
             if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
+                const priorityFeeWei = ethers.parseUnits(
                     txOptions.priorityFee.toString(),
                     'gwei'
                 );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+                tx.gasPrice = baseGasPrice + priorityFeeWei;
             } else {
                 tx.gasPrice = baseGasPrice;
             }
@@ -219,25 +220,27 @@ export abstract class GTC {
      */
     static async addBuyOrder(
         orderbook: ethers.Contract,
-        price: BigNumber,
-        size: BigNumber,
+        price: bigint,
+        size: bigint,
         postOnly: boolean,
         txOptions?: TransactionOptions
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         try {
+            const signer = await getSigner(orderbook);
+
             const tx = await GTC.constructBuyOrderTransaction(
-                orderbook.signer,
-                orderbook.address,
+                signer,
+                orderbook.target as string,
                 price,
                 size,
                 postOnly,
                 txOptions
             );
 
-            const transaction = await orderbook.signer.sendTransaction(tx);
+            const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
 
-            return receipt;
+            return receipt!;
         } catch (e: any) {
             console.log({ e });
             if (!e.error) {
@@ -252,25 +255,27 @@ export abstract class GTC {
      */
     static async addSellOrder(
         orderbook: ethers.Contract,
-        price: BigNumber,
-        size: BigNumber,
+        price: bigint,
+        size: bigint,
         postOnly: boolean,
         txOptions?: TransactionOptions
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         try {
+            const signer = await getSigner(orderbook);
+
             const tx = await GTC.constructSellOrderTransaction(
-                orderbook.signer,
-                orderbook.address,
+                signer,
+                orderbook.target as string,
                 price,
                 size,
                 postOnly,
                 txOptions
             );
 
-            const transaction = await orderbook.signer.sendTransaction(tx);
+            const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
 
-            return receipt;
+            return receipt!;
         } catch (e: any) {
             console.log({ e });
             if (!e.error) {
@@ -285,12 +290,12 @@ export abstract class GTC {
 
 async function estimateGasBuy(
     orderbook: ethers.Contract,
-    price: BigNumber,
-    size: BigNumber,
+    price: bigint,
+    size: bigint,
     postOnly: boolean
-): Promise<BigNumber> {
+): Promise<bigint> {
     try {
-        const gasEstimate = await orderbook.estimateGas.addBuyOrder(
+        const gasEstimate = await orderbook.addBuyOrder.estimateGas(
             price,
             size,
             postOnly
@@ -306,12 +311,12 @@ async function estimateGasBuy(
 
 async function estimateGasSell(
     orderbook: ethers.Contract,
-    price: BigNumber,
-    size: BigNumber,
+    price: bigint,
+    size: bigint,
     postOnly: boolean
-): Promise<BigNumber> {
+): Promise<bigint> {
     try {
-        const gasEstimate = await orderbook.estimateGas.addSellOrder(
+        const gasEstimate = await orderbook.addSellOrder.estimateGas(
             price,
             size,
             postOnly
