@@ -51,7 +51,7 @@ export class ParamCreator {
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
             ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
             ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
+        } as ethers.TransactionRequest;
 
         const [gasLimit, baseGasPrice] = await Promise.all([
             !tx.gasLimit ? signer.estimateGas({
