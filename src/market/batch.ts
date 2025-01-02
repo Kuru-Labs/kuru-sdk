@@ -7,8 +7,8 @@ import { MarketParams, BATCH } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
-import { getSigner } from "src/utils/signer";
-import { buildTransaction } from "src/utils/transaction";
+import { getSigner } from "../utils/signer";
+import { buildTransaction } from "../utils/transaction";
 
 export abstract class OrderBatcher {
     /**

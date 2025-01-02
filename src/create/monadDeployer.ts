@@ -2,7 +2,7 @@
 import { ethers } from "ethers";
 
 // ============ Internal Imports ============
-import { TransactionOptions } from "src/types";
+import { TransactionOptions } from "../types";
 import { extractErrorMessage } from "../utils";
 
 // ============ Config Imports ============

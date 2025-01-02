@@ -7,7 +7,7 @@ import { TransactionOptions } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
-import { getSigner } from "src/utils/signer";
+import { getSigner } from "../utils/signer";
 
 export abstract class OrderCanceler {
     /**
