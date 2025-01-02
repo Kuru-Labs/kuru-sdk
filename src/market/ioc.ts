@@ -13,8 +13,8 @@ import { MarketParams, MARKET, TransactionOptions } from "../types";
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
 import erc20Abi from "../../abi/IERC20.json";
-import { getSigner } from "src/utils/signer";
-import { buildTransaction } from "src/utils/transaction";
+import { getSigner } from "../utils/signer";
+import { buildTransaction } from "../utils/transaction";
 
 export abstract class IOC {
     /**
@@ -181,7 +181,6 @@ export abstract class IOC {
         isFillOrKill: boolean,
         txOptions?: TransactionOptions
     ): Promise<ethers.TransactionRequest> {
-        const address = await signer.getAddress();
         const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
 
         const data = orderbookInterface.encodeFunctionData("placeAndExecuteMarketSell", [

@@ -86,7 +86,7 @@ export async function approveToken(
         const ownerAddress = await getOwnerAddress(providerOrSigner);
         const existingApproval = await tokenContract.allowance(ownerAddress, approveTo);
 
-        if (existingApproval.gte(size)) {
+        if (existingApproval >= size) {
             console.log("Approval already exists");
             return null;
         }
