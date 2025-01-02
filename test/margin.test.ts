@@ -12,6 +12,7 @@ describe("Margin Account Integration Tests", () => {
   const PRIVATE_KEY = process.env.PK!;
   const MARGIN_ACCOUNT_ADDRESS = "0x33fa695D1B81b88638eEB0a1d69547Ca805b8949";
   const USER_ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+  // const TOKEN_ADDRESS = "0x9A29e9Bab1f0B599d1c6C39b60a79596b3875f56";
   const TOKEN_ADDRESS = ethers.ZeroAddress;
   const DECIMALS = 18;
 
@@ -25,7 +26,7 @@ describe("Margin Account Integration Tests", () => {
 
   describe("Deposit Tests", () => {
     it("should successfully deposit ETH", async () => {
-      const depositAmount = 0.1; // 0.1 ETH
+      const depositAmount = 100; // 0.1 ETH
       
       const initialBalance = await MarginBalance.getBalance(
         provider,
