@@ -16,18 +16,16 @@ export class ParamCreator {
         type: number,
         baseAssetAddress: string,
         quoteAssetAddress: string,
-        sizePrecision: BigInt,
-        pricePrecision: BigInt,
-        tickSize: BigInt,
-        minSize: BigInt,
-        maxSize: BigInt,
+        sizePrecision: bigint,
+        pricePrecision: bigint,
+        tickSize: bigint,
+        minSize: bigint,
+        maxSize: bigint,
         takerFeeBps: number,
         makerFeeBps: number,
-        kuruAmmSpread: BigInt,
+        kuruAmmSpread: bigint,
         txOptions?: TransactionOptions
     ): Promise<ethers.TransactionRequest> {
-        const address = await signer.getAddress();
-
         const routerInterface = new ethers.Interface(routerAbi.abi);
         const data = routerInterface.encodeFunctionData("deployProxy", [
             type,
@@ -60,14 +58,14 @@ export class ParamCreator {
         type: number,
         baseAssetAddress: string,
         quoteAssetAddress: string,
-        sizePrecision: BigInt,
-        pricePrecision: BigInt,
-        tickSize: BigInt,
-        minSize: BigInt,
-        maxSize: BigInt,
+        sizePrecision: bigint,
+        pricePrecision: bigint,
+        tickSize: bigint,
+        minSize: bigint,
+        maxSize: bigint,
         takerFeeBps: number,
         makerFeeBps: number,
-        kuruAmmSpread: BigInt,
+        kuruAmmSpread: bigint,
         txOptions?: TransactionOptions
     ): Promise<string> {
         const router = new ethers.Contract(routerAddress, routerAbi.abi, signer);
@@ -168,7 +166,7 @@ export class ParamCreator {
         return { precision: Math.pow(10, neededPrecision) };
     }
 
-    getSizePrecision(maxPriceInPricePrecision: BigInt) : { precision: number } | { error: string } {
+    getSizePrecision(maxPriceInPricePrecision: bigint) : { precision: number } | { error: string } {
         const numDigits = maxPriceInPricePrecision.toString().length;
         
         return { precision: Math.pow(10, numDigits) };
