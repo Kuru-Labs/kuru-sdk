@@ -1,4 +1,4 @@
-import { ethers, BigNumber } from "ethers";
+import { ethers } from "ethers";
 
 import {TradeEvent, OrderEvent} from "../types/types";
 import orderbookAbi from "../../abi/OrderBook.json";
@@ -10,7 +10,7 @@ export class MarketListener {
 		rpcUrl: string,
 		contractAddress: string,
 	) {
-		const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+		const provider = new ethers.JsonRpcProvider(rpcUrl);
 		this.contract = new ethers.Contract(contractAddress, orderbookAbi.abi, provider);
 	}
 
@@ -18,10 +18,10 @@ export class MarketListener {
 		this.contract.on(
 			"OrderCreated",
 			async (
-				orderId: BigNumber,
+				orderId: BigInt,
 				ownerAddress: string,
-				size: BigNumber,
-				price: BigNumber,
+				size: BigInt,
+				price: BigInt,
 				isBuy: boolean
 			) => {
                 callback({orderId, ownerAddress, size, price, isBuy});
@@ -33,12 +33,12 @@ export class MarketListener {
 		this.contract.on(
 			"Trade",
 			async (
-				orderId: BigNumber,
+				orderId: BigInt,
 				isBuy: boolean,
-				price: BigNumber,
-				updatedSize: BigNumber,
+				price: BigInt,
+				updatedSize: BigInt,
                 takerAddress: string,
-				filledSize: BigNumber,
+				filledSize: BigInt,
 			) => {
                 callback({orderId, isBuy, price, updatedSize, takerAddress, filledSize});
             }

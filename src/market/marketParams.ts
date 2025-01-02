@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from "ethers";
+import { ethers } from "ethers";
 
 // ============ Internal Imports ============
 import { MarketParams } from "../types";
@@ -15,7 +15,7 @@ export abstract class ParamFetcher {
      * @returns A promise that resolves to the market parameters.
      */
     static async getMarketParams(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string
     ): Promise<MarketParams> {
         const orderbook = new ethers.Contract(
@@ -23,19 +23,19 @@ export abstract class ParamFetcher {
             orderbookAbi.abi,
             providerOrSigner
         );
-        const marketParamsData = await orderbook.getMarketParams({from: ethers.constants.AddressZero});
+        const marketParamsData = await orderbook.getMarketParams({from: ethers.ZeroAddress});
         return {
-            pricePrecision: BigNumber.from(marketParamsData[0]),
-            sizePrecision: BigNumber.from(marketParamsData[1]),
+            pricePrecision: BigInt(marketParamsData[0]),
+            sizePrecision: BigInt(marketParamsData[1]),
             baseAssetAddress: marketParamsData[2],
-            baseAssetDecimals: BigNumber.from(marketParamsData[3]),
+            baseAssetDecimals: BigInt(marketParamsData[3]),
             quoteAssetAddress: marketParamsData[4],
-            quoteAssetDecimals: BigNumber.from(marketParamsData[5]),
-            tickSize: BigNumber.from(marketParamsData[6]),
-            minSize: BigNumber.from(marketParamsData[7]),
-            maxSize: BigNumber.from(marketParamsData[8]),
-            takerFeeBps: BigNumber.from(marketParamsData[9]),
-            makerFeeBps: BigNumber.from(marketParamsData[10]),
+            quoteAssetDecimals: BigInt(marketParamsData[5]),
+            tickSize: BigInt(marketParamsData[6]),
+            minSize: BigInt(marketParamsData[7]),
+            maxSize: BigInt(marketParamsData[8]),
+            takerFeeBps: BigInt(marketParamsData[9]),
+            makerFeeBps: BigInt(marketParamsData[10]),
         };
     }
 }

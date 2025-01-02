@@ -9,7 +9,7 @@ import orderbookAbi from "../../abi/OrderBook.json";
 
 export abstract class PathFinder {
     static async findBestPath(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         tokenIn: string,
         tokenOut: string,
         amountIn: number,
@@ -104,7 +104,7 @@ function computeAllRoutes(
 }
 
 async function computeRouteInput(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     route: Route,
     amountOut: number
 ) {
@@ -130,13 +130,13 @@ async function computeRouteInput(
         );
 
         const l2Book = await orderbook.getL2Book({
-            from: ethers.constants.AddressZero,
+            from: ethers.ZeroAddress,
         });
         const vaultParams = await orderbook.getVaultParams({
-            from: ethers.constants.AddressZero,
+            from: ethers.ZeroAddress,
         });
 
-        currentToken === ethers.constants.AddressZero
+        currentToken === ethers.ZeroAddress
             ? nativeSend.push(true)
             : nativeSend.push(false);
         if (currentToken === pool.baseToken) {
@@ -165,7 +165,7 @@ async function computeRouteInput(
             isBuy.push(true);
         }
 
-        const takerFeesBps = Number(marketParams.takerFeeBps._hex);
+        const takerFeesBps = Number(marketParams.takerFeeBps);
         feeInBase = (feeInBase * takerFeesBps) / 10000;
     }
 
@@ -179,7 +179,7 @@ async function computeRouteInput(
 }
 
 async function computeRouteOutput(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     route: Route,
     amountIn: number
 ): Promise<RouteOutput> {
@@ -198,7 +198,7 @@ async function computeRouteOutput(
             orderbookAddress
         );
 
-        currentToken === ethers.constants.AddressZero
+        currentToken === ethers.ZeroAddress
             ? nativeSend.push(true)
             : nativeSend.push(false);
         if (currentToken === pool.baseToken) {
@@ -223,7 +223,7 @@ async function computeRouteOutput(
             isBuy.push(true);
         }
 
-        const takerFeesBps = Number(marketParams.takerFeeBps._hex);
+        const takerFeesBps = Number(marketParams.takerFeeBps);
         feeInBase = (feeInBase * takerFeesBps) / 10000;
     }
 
