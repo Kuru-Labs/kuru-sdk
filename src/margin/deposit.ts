@@ -97,14 +97,14 @@ export abstract class MarginDeposit {
         amount: number,
         decimals: number,
         approveTokens: boolean,
-    ): Promise<BigInt> {
+    ): Promise<bigint> {
         try {
             const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
             const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
     
             const formattedAmount = ethers.parseUnits(amount.toString(), decimals);
     
-            let gasEstimate: BigInt;
+            let gasEstimate: bigint;
             if (tokenAddress === ethers.ZeroAddress) {
                 gasEstimate = await marginAccount.deposit.estimateGas(userAddress, tokenAddress, formattedAmount, { value: formattedAmount });
             } else {

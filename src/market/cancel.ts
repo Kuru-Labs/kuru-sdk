@@ -109,8 +109,8 @@ export abstract class OrderCanceler {
     static async estimateGas(
         providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
-        orderIds: BigInt[]
-    ): Promise<BigInt> {
+        orderIds: bigint[]
+    ): Promise<bigint> {
         try {
             const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
