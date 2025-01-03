@@ -1,7 +1,11 @@
 import { ethers } from "ethers";
 import { MonadDeployer } from "../../src/create/monadDeployer";
 import { monadDeployerAddress, rpcUrl } from "../config.json";
+
 import { ParamCreator } from "../../src/create/market";
+
+import dotenv from "dotenv";
+dotenv.config()
 
 async function main() {
     // Connect to provider with custom fetch
@@ -12,6 +16,9 @@ async function main() {
     }
     const signer = new ethers.Wallet(privateKey, provider);
 
+    const address = signer.address;
+    console.log(address);
+
     const monadDeployer = new MonadDeployer();
     const paramCreator = new ParamCreator();
 
@@ -20,7 +27,7 @@ async function main() {
         symbol: "TEST",
         tokenURI: "ipfs://QmTest",
         initialSupply: ethers.parseUnits("1000000", 18), // 1M tokens
-        dev: await signer.getAddress(), // Developer address
+        dev: signer.address, // Developer address
         supplyToDev: BigInt(1000), // 10% in basis points (bps)
     };
 

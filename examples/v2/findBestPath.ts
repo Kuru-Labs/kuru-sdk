@@ -3,6 +3,8 @@ import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "./../config.json";
 import { PoolFetcher } from "../../src/pools/fetcher";
+import dotenv from "dotenv";
+dotenv.config();
 
 const { rpcUrl } = KuruConfig;
 

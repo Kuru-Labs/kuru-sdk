@@ -2,6 +2,9 @@ import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "../config.json";
 
+import dotenv from "dotenv";
+dotenv.config();
+
 const {rpcUrl, contractAddress} = KuruConfig;
 
 const privateKey = process.env.PRIVATE_KEY as string;
