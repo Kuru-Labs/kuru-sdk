@@ -2,6 +2,9 @@ import { ethers } from "ethers";
 import { MonadDeployer } from "../../src/create/monadDeployer";
 import { monadDeployerAddress, rpcUrl } from "../config.json";
 
+import dotenv from "dotenv";
+dotenv.config()
+
 async function main() {
     // Connect to provider with custom fetch
     const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -10,6 +13,9 @@ async function main() {
         throw new Error("PRIVATE_KEY environment variable not set");
     }
     const signer = new ethers.Wallet(privateKey, provider);
+
+    const address = signer.address;
+    console.log(address);
 
     // Initialize MonadDeployer SDK
     const monadDeployer = new MonadDeployer();
@@ -20,7 +26,7 @@ async function main() {
         symbol: "TEST",
         tokenURI: "ipfs://QmTest",
         initialSupply: ethers.parseUnits("1000000", 18), // 1M tokens
-        dev: await signer.getAddress(), // Developer address
+        dev: address, // Developer address
         supplyToDev: BigInt(1000), // 10% in basis points (bps)
     };
 
