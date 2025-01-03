@@ -775,13 +775,7 @@ async function getAmmPrices(
   let vaultParamsData = contractVaultParams;
 
   if (!vaultParamsData) {
-    vaultParamsData = await orderbook.getVaultParams.staticCall({from: ethers.ZeroAddress, blockTag: blockNumber});
-
-
-    vaultParamsData = orderbook.interface.decodeFunctionResult(
-      "getVaultParams",
-      vaultParamsData
-    );
+    vaultParamsData = await orderbook.getVaultParams.staticCallResult({from: ethers.ZeroAddress, blockTag: blockNumber});
   }
 
   const vaultParams: VaultParams = {

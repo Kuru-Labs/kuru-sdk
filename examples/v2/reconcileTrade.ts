@@ -6,7 +6,7 @@ import { WssTradeEvent } from "../../src/types";
 const { rpcUrl, contractAddress } = KuruConfig;
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
     // Get initial orderbook

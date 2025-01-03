@@ -12,7 +12,7 @@ const args = process.argv.slice(2);
 const size = parseFloat(args[0]);
 
 (async () => {
-  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
   const signer = new ethers.Wallet(privateKey, provider);
 
   try {
@@ -36,7 +36,7 @@ const size = parseFloat(args[0]);
         console.log(`Transaction hash: ${txHash}`);
       }
     );
-    console.log("Transaction hash:", receipt.transactionHash);
+    console.log("Transaction hash:", receipt.hash);
   } catch (error) {
     console.error("Error performing swap:", error);
   }

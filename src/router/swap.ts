@@ -14,7 +14,8 @@ import { calculateDynamicSlippage } from "../utils";
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
 import routerAbi from "../../abi/Router.json";
-import { getSigner } from "src/utils/signer";
+import { getSigner } from "../utils/signer";
+import { buildTransaction } from "../utils/transaction";
 
 export abstract class TokenSwap {
     /**
@@ -35,8 +36,6 @@ export abstract class TokenSwap {
         minTokenOutAmount: bigint,
         txOptions?: TransactionOptions,
     ): Promise<ethers.TransactionRequest> {
-        const address = await signer.getAddress();
-
         const routerInterface = new ethers.Interface(routerAbi.abi);
         const data = routerInterface.encodeFunctionData("anyToAnySwap", [
             routeOutput.route.path.map((pool) => pool.orderbook),
@@ -48,41 +47,9 @@ export abstract class TokenSwap {
             minTokenOutAmount
         ]);
 
-        const tx: ethers.TransactionRequest = {
-            to: routerAddress,
-            from: address,
-            data,
-            value: routeOutput.nativeSend[0] ? tokenInAmount : 0,
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        } as ethers.TransactionRequest;
+        const value = routeOutput.nativeSend[0] ? tokenInAmount : BigInt(0);
 
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? (await signer.provider!.getFeeData()).gasPrice : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice + priorityFeeWei;
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
+        const tx = await buildTransaction(signer, routerAddress, data, value, txOptions);
 
         return tx;
     }

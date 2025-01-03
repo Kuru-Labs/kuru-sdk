@@ -4,7 +4,7 @@ import {routerAddress, rpcUrl, baseTokenAddress, quoteTokenAddress} from "../con
 
 async function main() {
     // Connect to provider with custom fetch
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
 
     // Add debug logging with elapsed time
     provider.pollingInterval = 100;
@@ -41,7 +41,7 @@ async function main() {
     console.log("Max size", precisions.maxSize.toString());
     const takerFeeBps = 30; // 0.3%
     const makerFeeBps = 10; // -0.1% (rebate)
-    const kuruAmmSpread = ethers.BigNumber.from(100); // 1%
+    const kuruAmmSpread = BigInt(100); // 1%
     try {
         const marketAddress = await paramCreator.deployMarket(
             signer,
