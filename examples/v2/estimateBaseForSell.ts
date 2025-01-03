@@ -10,7 +10,7 @@ const args = process.argv.slice(2);
 const amount = parseFloat(args[0]);
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
 
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
         provider,

@@ -8,7 +8,7 @@ const {userAddress, rpcUrl, marginAccountAddress, baseTokenAddress} = KuruConfig
 const privateKey = process.env.PRIVATE_KEY as string;
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 	
     try {
@@ -21,7 +21,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
             18,
             true
         );
-        console.log("Transaction hash:", receipt.transactionHash);
+        console.log("Transaction hash:", receipt.hash);
     } catch (error: any) {
         console.error("Error depositing:", error);
     }

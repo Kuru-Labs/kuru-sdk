@@ -12,8 +12,8 @@ const price = parseFloat(args[0]);
 const size = parseFloat(args[1]);
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    provider._pollingInterval = 100;
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    provider.pollingInterval = 100;
     const signer = new ethers.Wallet(privateKey, provider);
 
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
@@ -35,7 +35,7 @@ const size = parseFloat(args[1]);
                 }
             },
         );
-        console.log("Transaction hash:", receipt.transactionHash);
+        console.log("Transaction hash:", receipt.hash);
     } catch(e) {
         console.error("Error placing limit sell order:", e);
     }

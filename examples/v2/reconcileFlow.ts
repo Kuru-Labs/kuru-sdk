@@ -1,4 +1,4 @@
-import { ethers, BigNumber } from "ethers";
+import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "../config.json";
 import {
@@ -10,7 +10,7 @@ import {
 const { rpcUrl, contractAddress } = KuruConfig;
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
         provider,
         contractAddress
@@ -25,12 +25,12 @@ const { rpcUrl, contractAddress } = KuruConfig;
 
     // Example order creation event
     const orderCreatedEvent: WssOrderEvent = {
-        orderId: 34,
+        orderId: BigInt(34),
         owner: "0x122A73Fb6ad4398e93A16dD15Bb37843eE26d5a9",
-        size: BigNumber.from("10000000000"),
-        price: BigNumber.from("10089"),
+        size: BigInt("10000000000"),
+        price: BigInt("10089"),
         isBuy: true,
-        blockNumber: BigNumber.from("0x63550d"),
+        blockNumber: BigInt("0x63550d"),
         transactionHash:
             "0xcd9ba3148d6d0e9438951262d5c8c787c73f62fe0417a0a222e6b0df36859ceb",
         triggerTime: 1723792668,

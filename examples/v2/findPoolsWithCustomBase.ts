@@ -11,7 +11,7 @@ const tokenOutAddress = args[1];
 
 // Define custom base tokens
 const customBaseTokens: BaseToken[] = [
-    { symbol: "ETH", address: ethers.constants.AddressZero },
+    { symbol: "ETH", address: ethers.ZeroAddress },
     { symbol: "USDC", address: "0xb73472fF5a4799F7182CB8f60360de6Ec7BB9c94" },
 ];
 

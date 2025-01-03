@@ -4,8 +4,8 @@ import { monadDeployerAddress, rpcUrl } from "../config.json";
 
 async function main() {
     // Connect to provider with custom fetch
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    const privateKey = process.env.PRIVATE_KEY;
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const privateKey = process.env.PK;
     if (!privateKey) {
         throw new Error("PRIVATE_KEY environment variable not set");
     }
@@ -19,19 +19,19 @@ async function main() {
         name: "Test Token",
         symbol: "TEST",
         tokenURI: "ipfs://QmTest",
-        initialSupply: ethers.utils.parseUnits("1000000", 18), // 1M tokens
+        initialSupply: ethers.parseUnits("1000000", 18), // 1M tokens
         dev: await signer.getAddress(), // Developer address
-        supplyToDev: ethers.BigNumber.from(1000), // 10% in basis points (bps)
+        supplyToDev: BigInt(1000), // 10% in basis points (bps)
     };
 
     // Example market parameters
     const marketParams = {
-        nativeTokenAmount: ethers.utils.parseEther("0.1"), // 0.1 ETH for initial liquidity
-        sizePrecision: ethers.BigNumber.from("1000000"), // 6 decimals
+        nativeTokenAmount: ethers.parseEther("0.1"), // 0.1 ETH for initial liquidity
+        sizePrecision: BigInt("1000000"), // 6 decimals
         pricePrecision: 6,  // 6 decimals
         tickSize: 1,        // minimum price movement
-        minSize: ethers.BigNumber.from("100000"),  // minimum trade size
-        maxSize: ethers.BigNumber.from("100000000000"), // maximum trade size
+        minSize: BigInt("100000"),  // minimum trade size
+        maxSize: BigInt("100000000000"), // maximum trade size
         takerFeeBps: 30,    // 0.3%
         makerFeeBps: 10,    // 0.1%
     };
@@ -46,7 +46,7 @@ async function main() {
         );
 
         console.log("Estimated gas limit:", tx.gasLimit?.toString());
-        console.log("Total value to send:", ethers.utils.formatEther(tx.value || "0"), "MON");
+        console.log("Total value to send:", ethers.formatEther(tx.value || "0"), "MON");
 
         // Then deploy the token and market
         const result = await monadDeployer.deployTokenAndMarket(
