@@ -9,7 +9,6 @@ const {rpcUrl, contractAddress} = KuruConfig;
 
 const privateKey = process.env.PRIVATE_KEY as string;
 
-console.log(privateKey);
 
 const args = process.argv.slice(2);
 const price = parseFloat(args[0]);

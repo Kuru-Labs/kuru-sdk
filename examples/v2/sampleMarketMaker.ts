@@ -5,6 +5,9 @@ import { log10BigNumber } from "../../src/utils/math";
 import { MarginBalance } from "../../src/margin/balance";
 import { MarketParams } from "../../src/types";
 
+import dotenv from "dotenv";
+dotenv.config();
+
 // Config
 import * as KuruConfig from "../config.json";
 

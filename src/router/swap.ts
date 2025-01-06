@@ -139,7 +139,6 @@ export abstract class TokenSwap {
                 minTokenOutAmount,
                 txOptions
             );
-            console.log(tx);
 
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait();
