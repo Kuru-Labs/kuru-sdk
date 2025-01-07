@@ -4,6 +4,7 @@ import { MarketParams } from "../src/types";
 
 import dotenv from "dotenv";
 import { ParamFetcher } from "../src/market/marketParams";
+import { getAveragePriceSizeForMarketOrder } from "../src/utils/market";
 dotenv.config();
 
 describe("IOC (Market Orders) Integration Tests", () => {
@@ -27,8 +28,8 @@ describe("IOC (Market Orders) Integration Tests", () => {
 
     it("should execute a market buy order", async () => {
       const order = {
-        size: 100, // Amount of quote asset to spend
-        minAmountOut: 90, // Minimum base asset to receive
+        size: 1, // Amount of quote asset to spend
+        minAmountOut: 0.5, // Minimum base asset to receive
         isBuy: true,
         fillOrKill: false,
         approveTokens: true,
@@ -43,7 +44,7 @@ describe("IOC (Market Orders) Integration Tests", () => {
         order
       );
 
-      console.log(receipt);
+      console.log(receipt.logs);
 
       expect(receipt.status).toBe(1);
     }, 30000);
@@ -65,7 +66,9 @@ describe("IOC (Market Orders) Integration Tests", () => {
         marketParams,
         order
       );
-      console.log(receipt);
+      // console.log(receipt.logs);
+      const averagePriceSize = getAveragePriceSizeForMarketOrder(receipt);
+      console.log(averagePriceSize);
       expect(receipt.status).toBe(1);
     }, 30000);
 

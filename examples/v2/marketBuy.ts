@@ -39,7 +39,7 @@ const minAmountOut = parseFloat(args[1]);
                 gasLimit: ethers.parseUnits('1000000', 1)
             },
         });
-        console.log("Transaction hash:", receipt.hash);
+        console.log("Transaction receipt:", receipt);
     } catch (error) {
         console.error("Error placing market buy order:", error);
     }
