@@ -5,7 +5,7 @@ import fetch from "cross-fetch";
 
 // Define your most important base tokens
 const BASE_TOKENS: BaseToken[] = [
-    { symbol: "ETH", address: ethers.constants.AddressZero },
+    { symbol: "ETH", address: ethers.ZeroAddress },
     { symbol: "USDC", address: "0x266c56717Cad3ee549ea53bA75e14653C9748b40" },
     { symbol: "USDT", address: "0x06cb962eb3c587e87950c7b6743fc2e97624dfcd" },
 ];

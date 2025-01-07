@@ -3,6 +3,8 @@ import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "./../config.json";
 import { PoolFetcher } from "../../src/pools/fetcher";
+import dotenv from "dotenv";
+dotenv.config();
 
 const { rpcUrl } = KuruConfig;
 
@@ -12,7 +14,7 @@ const args = process.argv.slice(2);
 const amount = parseFloat(args[0]);
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
 
     try {
         const pool = new PoolFetcher(kuruApi as string);

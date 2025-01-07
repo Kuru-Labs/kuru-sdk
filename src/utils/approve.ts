@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from "ethers";
+import { ethers } from "ethers";
 
 // Add TransactionOptions type import
 import { TransactionOptions } from "../types";
@@ -7,14 +7,11 @@ import { TransactionOptions } from "../types";
 // ============ Internal Imports ============
 import { extractErrorMessage } from "../utils";
 import erc20Abi from "../../abi/IERC20.json";
+import { getSigner } from "./signer";
 
-const getOwnerAddress = async (providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer): Promise<string> => {
-
-    if (providerOrSigner instanceof ethers.providers.JsonRpcProvider) {
-        return await providerOrSigner.getSigner().getAddress();
-    }
-
-    return await providerOrSigner.getAddress();
+const getOwnerAddress = async (providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner): Promise<string> => {
+    const signer = await getSigner(providerOrSigner);
+    return await signer.getAddress();
 }
 
 /**
@@ -30,36 +27,37 @@ export async function constructApproveTransaction(
     signer: ethers.Signer,
     tokenContractAddress: string,
     approveTo: string,
-    size: BigNumber,
+    size: bigint,
     txOptions?: TransactionOptions
-): Promise<ethers.providers.TransactionRequest> {
+): Promise<ethers.TransactionRequest> {
     const address = await signer.getAddress();
-    const tokenInterface = new ethers.utils.Interface(erc20Abi.abi);
+    const tokenInterface = new ethers.Interface(erc20Abi.abi);
     const data = tokenInterface.encodeFunctionData("approve", [approveTo, size]);
 
-    const tx: ethers.providers.TransactionRequest = {
+    const tx: ethers.TransactionRequest = {
         to: tokenContractAddress,
         from: address,
         data,
-        gasLimit: BigNumber.from(50000),
+        gasLimit: BigInt(50000),
         ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
         ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
         ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
         ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-    };
+    } as ethers.TransactionRequest;
+
     const baseGasPrice = (!tx.gasPrice && !tx.maxFeePerGas) 
-        ? signer.provider?.getGasPrice() || undefined
+        ? (await signer.provider?.getFeeData())!.gasPrice || undefined
         : undefined;
 
     if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
         if (txOptions?.priorityFee) {
-            const priorityFeeWei = ethers.utils.parseUnits(
+            const priorityFeeWei = ethers.parseUnits(
                 txOptions.priorityFee.toString(),
                 'gwei'
             );
-            tx.gasPrice = await baseGasPrice.then(base => base.add(priorityFeeWei));
+            tx.gasPrice = baseGasPrice + priorityFeeWei;
         } else {
-            tx.gasPrice = await baseGasPrice;
+            tx.gasPrice = baseGasPrice;
         }
     }
 
@@ -79,8 +77,8 @@ export async function constructApproveTransaction(
 export async function approveToken(
     tokenContract: ethers.Contract,
     approveTo: string,
-    size: BigNumber,
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    size: bigint,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     txOptions?: TransactionOptions,
     waitForReceipt: boolean = true
 ): Promise<string | null> {
@@ -88,26 +86,28 @@ export async function approveToken(
         const ownerAddress = await getOwnerAddress(providerOrSigner);
         const existingApproval = await tokenContract.allowance(ownerAddress, approveTo);
 
-        if (existingApproval.gte(size)) {
+        if (existingApproval >= size) {
             console.log("Approval already exists");
             return null;
         }
 
+        const signer = await getSigner(tokenContract);
+
         const tx = await constructApproveTransaction(
-            tokenContract.signer,
-            tokenContract.address,
+            signer,
+            tokenContract.target as string,
             approveTo,
             size,
             txOptions
         );
-        const transaction = await tokenContract.signer.sendTransaction(tx);
+        const transaction = await signer.sendTransaction(tx);
         
         if (!waitForReceipt) {
             return transaction.hash;
         }
 
         const receipt = await transaction.wait(1);
-        return receipt.transactionHash;
+        return receipt?.hash || null;
     } catch (e: any) {
         console.error({e});
         if (!e.error) {
@@ -120,10 +120,10 @@ export async function approveToken(
 export async function estimateApproveGas(
     tokenContract: ethers.Contract,
     approveTo: string,
-    size: BigNumber
-): Promise<BigNumber> {
+    size: bigint
+): Promise<bigint> {
     try {
-        const gasEstimate = await tokenContract.estimateGas.approve(
+        const gasEstimate = await tokenContract.approve.estimateGas(
             approveTo,
             size
         );

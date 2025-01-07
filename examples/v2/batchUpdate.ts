@@ -1,13 +1,16 @@
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "../config.json";
 
+import dotenv from "dotenv";
+dotenv.config();
+
 const { rpcUrl, contractAddress } = KuruConfig;
-const privateKey = process.env.PRIVATE_KEY as string;
+const privateKey = process.env.PK as string;
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    provider._pollingInterval = 100;
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    provider.pollingInterval = 100;
     const signer = new ethers.Wallet(privateKey, provider);
 
     try {
@@ -47,14 +50,14 @@ const privateKey = process.env.PRIVATE_KEY as string;
                 }
             ],
             cancelOrders: [
-                BigNumber.from(1),
+                BigInt(1),
             ],
             postOnly: true,
             txOptions: {
                 priorityFee: 0.001,
-                nonce: await signer.getTransactionCount(),
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-                gasLimit: ethers.utils.parseUnits('1000000', 1)
+                nonce: await signer.getNonce(),
+                gasPrice: ethers.parseUnits('1', 'gwei'),
+                gasLimit: ethers.parseUnits('1000000', 1)
             }
         };
 
@@ -66,7 +69,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
         );
 
         console.log("Batch update successful!");
-        console.log("Transaction hash:", receipt.transactionHash);
+        console.log("Transaction hash:", receipt.hash);
     } catch (error) {
         console.error("Error performing batch update:", error);
     }

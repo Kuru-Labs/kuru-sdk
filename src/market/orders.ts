@@ -16,13 +16,13 @@ export abstract class Orders {
      * @returns A promise that resolves to an Order object containing order details.
      */
     static async getOrder(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         orderId: number
     ): Promise<Order> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-        const order: Order = await orderbook.s_orders(orderId, {from: ethers.constants.AddressZero});
+        const order: Order = await orderbook.s_orders(orderId, {from: ethers.ZeroAddress});
 
         return order;
     }

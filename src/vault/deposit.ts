@@ -1,17 +1,17 @@
 // ============ External Imports ============
-import { BigNumber, ContractReceipt, ethers } from "ethers";
+import { ethers } from "ethers";
 
 // ============ Internal Imports ============
 import vaultAbi from "../../abi/Vault.json";
 
 export abstract class Vault {
     static async deposit(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         ammVaultAddress: string,
-        amount1: BigNumber,
-        amount2: BigNumber,
+        amount1: bigint,
+        amount2: bigint,
         receiver: string
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         const contractInstance = new ethers.Contract(
             ammVaultAddress,
             vaultAbi.abi,
@@ -24,11 +24,11 @@ export abstract class Vault {
     }
 
     static async withdraw(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-        shares: BigNumber,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
+        shares: bigint,
         receiver: string,
         owner: string
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         const contractInstance = new ethers.Contract(
             owner,
             vaultAbi.abi,

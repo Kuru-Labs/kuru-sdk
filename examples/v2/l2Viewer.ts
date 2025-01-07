@@ -20,7 +20,7 @@ class OrderbookWatcher {
     public startWatching(intervalMs: number = 500): void {
         setInterval(async () => {
             try {
-                const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+                const provider = new ethers.JsonRpcProvider(rpcUrl);
                 const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
                 const currentOrderbook = await KuruSdk.OrderBook.getL2OrderBook(
@@ -28,7 +28,22 @@ class OrderbookWatcher {
                     contractAddress,
                     marketParams
                 );
-                const currentOrderbookJson = JSON.stringify(currentOrderbook, null, 4); // 4-space indentation for pretty printing
+
+                // Convert BigInt to string before JSON serialization
+                const serializedOrderbook = {
+                    asks: currentOrderbook.asks.map(([price, quantity]) => [
+                        Number(price),
+                        Number(quantity)
+                    ]),
+                    bids: currentOrderbook.bids.map(([price, quantity]) => [
+                        Number(price),
+                        Number(quantity)
+                    ]),
+                    blockNumber: Number(currentOrderbook.blockNumber)
+                };
+
+                const currentOrderbookJson = JSON.stringify(serializedOrderbook, null, 4);
+
                 if (this.lastOrderbookJson !== currentOrderbookJson) {
                     const asksArray = currentOrderbook.asks
                         .map(([price, quantity]) => ({ price, quantity }))

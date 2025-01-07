@@ -15,13 +15,13 @@ const WS_URL = `wss://ws.staging.kuru.io`;
 class OrderbookWatcher {
     private socket: Socket;
     private localOrderbook: OrderBookData | null = null;
-    private provider: ethers.providers.JsonRpcProvider;
+    private provider: ethers.JsonRpcProvider;
     private marketParams: any;
     private eventQueue: Map<number, (() => OrderBookData)[]> = new Map();
     private lastProcessedBlock: number = 0;
 
     constructor() {
-        this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+        this.provider = new ethers.JsonRpcProvider(rpcUrl);
         this.socket = io(WS_URL, {
             query: { marketAddress: contractAddress },
             transports: ["websocket"],
@@ -67,10 +67,10 @@ class OrderbookWatcher {
                 const orderEvent: WssOrderEvent = {
                     orderId: event.orderId,
                     owner: event.owner,
-                    size: ethers.BigNumber.from(event.size),
-                    price: ethers.BigNumber.from(event.price),
+                    size: BigInt(event.size),
+                    price: BigInt(event.price),
                     isBuy: event.isBuy,
-                    blockNumber: ethers.BigNumber.from(event.blockNumber),
+                    blockNumber: BigInt(event.blockNumber),
                     transactionHash: event.transactionHash,
                     triggerTime: event.triggerTime,
                     marketAddress: event.marketAddress,

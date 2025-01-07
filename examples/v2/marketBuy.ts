@@ -3,6 +3,9 @@ import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "./../config.json";
 
+import dotenv from "dotenv";
+dotenv.config()
+
 const { rpcUrl, contractAddress } = KuruConfig;
 
 const privateKey = process.env.PRIVATE_KEY as string;
@@ -12,11 +15,11 @@ const size = parseFloat(args[0]);
 const minAmountOut = parseFloat(args[1]);
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    provider._pollingInterval = 10;
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    provider.pollingInterval = 10;
     const signer = new ethers.Wallet(privateKey, provider);
     try {
-        const nonce = await signer.getTransactionCount();
+        const nonce = await signer.getNonce();
         
         const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
             provider,
@@ -32,11 +35,11 @@ const minAmountOut = parseFloat(args[1]);
             txOptions: {
                 priorityFee: 0.001,
                 nonce: nonce,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-                gasLimit: ethers.utils.parseUnits('1000000', 1)
+                gasPrice: ethers.parseUnits('1', 'gwei'),
+                gasLimit: ethers.parseUnits('1000000', 1)
             },
         });
-        console.log("Transaction hash:", receipt.transactionHash);
+        console.log("Transaction receipt:", receipt);
     } catch (error) {
         console.error("Error placing market buy order:", error);
     }

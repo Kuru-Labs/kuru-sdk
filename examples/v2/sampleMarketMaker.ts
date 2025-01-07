@@ -5,11 +5,14 @@ import { log10BigNumber } from "../../src/utils/math";
 import { MarginBalance } from "../../src/margin/balance";
 import { MarketParams } from "../../src/types";
 
+import dotenv from "dotenv";
+dotenv.config();
+
 // Config
 import * as KuruConfig from "../config.json";
 
 // External Modules
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import fetch from 'cross-fetch';
 import { io, Socket } from 'socket.io-client';
 
@@ -19,9 +22,9 @@ const privateKey = process.env.PRIVATE_KEY as string;
 const BINANCE_API_URL = "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT";
 
 // Global state management
-let activeOrderIds: BigNumber[] = [];  // Tracks currently active order IDs
+let activeOrderIds: BigInt[] = [];  // Tracks currently active order IDs
 let currentNonce: number = 0;          // Manages transaction nonce
-let currentGasPrice: BigNumber | undefined = undefined;
+let currentGasPrice: BigInt | undefined = undefined;
 
 const LOG_LEVELS = {
     INFO: 'INFO',
@@ -52,7 +55,7 @@ let currentInventory: InventoryBalance = {
 // Nonce management functions
 // Synchronizes the nonce with the blockchain state
 async function syncNonce(signer: ethers.Wallet) {
-    currentNonce = await signer.getTransactionCount();
+    currentNonce = await signer.getNonce();
     log('DEBUG', `Nonce synced to: ${currentNonce}`);
 }
 
@@ -61,45 +64,45 @@ function getAndIncrementNonce(): number {
 }
 
 interface TradeInfo {
-    orderId: BigNumber;
-    filledSize: BigNumber;
-    price: BigNumber;
+    orderId: bigint;
+    filledSize: bigint;
+    price: bigint;
     isBuy: boolean;
 }
 
 // Event parsing functions
-async function parseEvents(receipt: ethers.ContractReceipt): Promise<{
-    newOrderIds: BigNumber[];
+async function parseEvents(receipt: ethers.TransactionReceipt): Promise<{
+    newOrderIds: bigint[];
     trades: TradeInfo[];
 }> {
-    const newOrderIds: BigNumber[] = [];
+    const newOrderIds: BigInt[] = [];
     const trades: TradeInfo[] = [];
     
     receipt.logs.forEach((log) => {
-        // Check for OrderCreated events
-        if (log.topics[0] === ethers.utils.id("OrderCreated(uint40,address,uint96,uint32,bool)")) {
+        // Update event parsing for OrderCreated
+        if (log.topics[0] === ethers.id("OrderCreated(uint40,address,uint96,uint32,bool)")) {
             try {
-                const decodedLog = ethers.utils.defaultAbiCoder.decode(
+                const decodedLog = ethers.AbiCoder.defaultAbiCoder().decode(
                     ['uint40', 'address', 'uint96', 'uint32', 'bool'],
                     log.data
                 );
-                const orderId = BigNumber.from(decodedLog[0]);
+                const orderId = BigInt(decodedLog[0]);
                 newOrderIds.push(orderId);
             } catch (error) {
                 console.error("Error decoding OrderCreated event:", error);
             }
         }
-        // Check for Trade events
-        else if (log.topics[0] === ethers.utils.id("Trade(uint40,address,bool,uint256,uint96,address,address,uint96)")) {
+        // Update event parsing for Trade
+        else if (log.topics[0] === ethers.id("Trade(uint40,address,bool,uint256,uint96,address,address,uint96)")) {
             try {
-                const decodedLog = ethers.utils.defaultAbiCoder.decode(
+                const decodedLog = ethers.AbiCoder.defaultAbiCoder().decode(
                     ['uint40', 'address', 'bool', 'uint256', 'uint96', 'address', 'address', 'uint96'],
                     log.data
                 );
                 trades.push({
-                    orderId: BigNumber.from(decodedLog[0]),
-                    price: BigNumber.from(decodedLog[3]),
-                    filledSize: BigNumber.from(decodedLog[7]),
+                    orderId: BigInt(decodedLog[0]),
+                    price: BigInt(decodedLog[3]),
+                    filledSize: BigInt(decodedLog[7]),
                     isBuy: decodedLog[2]
                 });
             } catch (error) {
@@ -108,7 +111,7 @@ async function parseEvents(receipt: ethers.ContractReceipt): Promise<{
         }
     });
     
-    return { newOrderIds, trades };
+    return { newOrderIds: newOrderIds as bigint[], trades: trades as TradeInfo[] };
 }
 
 // Price fetching function
@@ -172,7 +175,7 @@ class OrderTracker {
             }
 
             if (trade.updatedSize === "0") {
-                const orderIdStr = BigNumber.from(trade.orderId).toString();
+                const orderIdStr = BigInt(trade.orderId).toString();
                 if (this.activeOrders.has(orderIdStr)) {
                     this.activeOrders.delete(orderIdStr);
                     activeOrderIds = activeOrderIds.filter(id => 
@@ -207,22 +210,22 @@ class OrderTracker {
             }
 
             // Update the appropriate balance
-            const balance = BigNumber.from(update.balance);
+            const balance = BigInt(update.balance);
             if (update.isBaseAsset) {
                 currentInventory.baseBalance = parseFloat(
-                    ethers.utils.formatUnits(balance, this.marketParams.baseAssetDecimals)
+                    ethers.formatUnits(balance, this.marketParams.baseAssetDecimals)
                 );
                 log('DEBUG', `Base asset balance updated: ${currentInventory.baseBalance}`);
             } else {
                 currentInventory.quoteBalance = parseFloat(
-                    ethers.utils.formatUnits(balance, this.marketParams.quoteAssetDecimals)
+                    ethers.formatUnits(balance, this.marketParams.quoteAssetDecimals)
                 );
                 log('DEBUG', `Quote asset balance updated: ${currentInventory.quoteBalance}`);
             }
         });
     }
 
-    public trackOrders(orderIds: BigNumber[]) {
+    public trackOrders(orderIds: bigint[]) {
         orderIds.forEach(id => {
             this.activeOrders.add(id.toString());
         });
@@ -239,7 +242,7 @@ let cachedMarketParams: any = null;
 let lastParamsFetch: number = 0;
 const PARAMS_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-async function getMarketParams(provider: ethers.providers.JsonRpcProvider): Promise<any> {
+async function getMarketParams(provider: ethers.JsonRpcProvider): Promise<any> {
     const now = Date.now();
     
     // Return cached params if they're still valid
@@ -257,7 +260,7 @@ async function getMarketParams(provider: ethers.providers.JsonRpcProvider): Prom
 
 // Core market making logic
 async function updateLimitOrders(
-    provider: ethers.providers.JsonRpcProvider,
+    provider: ethers.JsonRpcProvider,
     signer: ethers.Wallet, 
     basePrice: number, 
     size: number, 
@@ -286,14 +289,14 @@ async function updateLimitOrders(
             txOptions: {
                 priorityFee: 0.001,
                 nonce: getAndIncrementNonce(),
-                gasLimit: ethers.BigNumber.from(totalGasLimit),
+                gasLimit: BigInt(totalGasLimit),
                 gasPrice: currentGasPrice
             }
         };
 
         // Get price precision and tick size
-        const pricePrecision = BigNumber.from(marketParams.pricePrecision);
-        const tickSize = BigNumber.from(marketParams.tickSize);
+        const pricePrecision = BigInt(marketParams.pricePrecision);
+        const tickSize = BigInt(marketParams.tickSize);
         const priceDecimals = log10BigNumber(pricePrecision);
         const tickDecimals = log10BigNumber(tickSize);
 
@@ -341,7 +344,7 @@ async function updateLimitOrders(
         // Consolidated logging
         console.log('\n=== Market Making Update ===');
         console.log(`Timestamp: ${new Date().toISOString()}`);
-        console.log(`Transaction Hash: ${receipt.transactionHash}`);
+        console.log(`Transaction Hash: ${receipt.hash}`);
         
         console.log('\nMarket State:');
         console.log(`- SOL Price: $${basePrice.toFixed(3)}`);
@@ -377,10 +380,11 @@ async function updateLimitOrders(
 }
 
 // Add this new function near syncNonce
-async function syncGasPrice(provider: ethers.providers.JsonRpcProvider) {
+async function syncGasPrice(provider: ethers.JsonRpcProvider) {
     try {
-        currentGasPrice = await provider.getGasPrice();
-        log('DEBUG', `Gas price synced to: ${ethers.utils.formatUnits(currentGasPrice, "gwei")} gwei`);
+        const feeData = await provider.getFeeData();
+        currentGasPrice = feeData.gasPrice ?? undefined;
+        log('DEBUG', `Gas price synced to: ${ethers.formatUnits(currentGasPrice! as bigint, "gwei")} gwei`);
     } catch (error) {
         log('ERROR', `Error syncing gas price: ${error}`);
     }
@@ -388,7 +392,7 @@ async function syncGasPrice(provider: ethers.providers.JsonRpcProvider) {
 
 // Add this new function to fetch and update balances
 async function updateInventoryBalances(
-    provider: ethers.providers.JsonRpcProvider,
+    provider: ethers.JsonRpcProvider,
     signer: ethers.Wallet,
     marketParams: MarketParams
 ) {
@@ -409,8 +413,8 @@ async function updateInventoryBalances(
         ]);
 
         currentInventory = {
-            baseBalance: parseFloat(ethers.utils.formatUnits(baseBalance, marketParams.baseAssetDecimals)),
-            quoteBalance: parseFloat(ethers.utils.formatUnits(quoteBalance, marketParams.quoteAssetDecimals))
+            baseBalance: parseFloat(ethers.formatUnits(baseBalance, marketParams.baseAssetDecimals)),
+            quoteBalance: parseFloat(ethers.formatUnits(quoteBalance, marketParams.quoteAssetDecimals))
         };
 
         log('DEBUG', `Updated inventory - Base: ${currentInventory.baseBalance}, Quote: ${currentInventory.quoteBalance}`);
@@ -436,7 +440,7 @@ async function cancelAllOrders(
             txOptions: {
                 priorityFee: 0.001,
                 nonce: getAndIncrementNonce(),
-                gasLimit: ethers.BigNumber.from(85_000 + activeOrderIds.length * 40_000),
+                gasLimit: BigInt(85_000 + activeOrderIds.length * 40_000),
                 gasPrice: currentGasPrice
             }
         };
@@ -448,7 +452,7 @@ async function cancelAllOrders(
             batchUpdate
         );
 
-        log('INFO', `Successfully cancelled ${activeOrderIds.length} orders. TX: ${receipt.transactionHash}`);
+        log('INFO', `Successfully cancelled ${activeOrderIds.length} orders. TX: ${receipt.hash}`);
         activeOrderIds = [];
     } catch (error) {
         log('ERROR', `Failed to cancel orders: ${error}`);
@@ -457,8 +461,7 @@ async function cancelAllOrders(
 
 // Main market making loop
 async function startMarketMaking() {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    provider._pollingInterval = 100;
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
     
     const orderTracker = new OrderTracker(signer.address);

@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from "ethers";
+import { ethers } from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from "../utils";
@@ -7,6 +7,8 @@ import { MarketParams, BATCH } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
+import { getSigner } from "../utils/signer";
+import { buildTransaction } from "../utils/transaction";
 
 export abstract class OrderBatcher {
     /**
@@ -18,18 +20,18 @@ export abstract class OrderBatcher {
      * @returns A promise that resolves when the transaction is confirmed.
      */
     static async batchUpdate(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         batchUpdate: BATCH
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         // Initialize arrays for buy and sell prices and sizes
-        const buyPrices: BigNumber[] = [];
-        const buySizes: BigNumber[] = [];
-        const sellPrices: BigNumber[] = [];
-        const sellSizes: BigNumber[] = [];
+        const buyPrices: BigInt[] = [];
+        const buySizes: BigInt[] = [];
+        const sellPrices: BigInt[] = [];
+        const sellSizes: BigInt[] = [];
 
         // Separate the limit orders into buy and sell arrays
         for (const order of batchUpdate.limitOrders) {
@@ -40,8 +42,8 @@ export abstract class OrderBatcher {
             const priceStr = Number(order.price).toFixed(pricePrecision);
             const sizeStr = Number(order.size).toFixed(sizePrecision);
             
-            const priceBn: BigNumber = ethers.utils.parseUnits(priceStr, pricePrecision);
-            const sizeBn: BigNumber = ethers.utils.parseUnits(sizeStr, sizePrecision);
+            const priceBn: BigInt = ethers.parseUnits(priceStr, pricePrecision);
+            const sizeBn: BigInt = ethers.parseUnits(sizeStr, sizePrecision);
 
             if (order.isBuy) {
                 buyPrices.push(priceBn);
@@ -53,8 +55,8 @@ export abstract class OrderBatcher {
         }
 
         try {
-            const signer = orderbook.signer;
-            const address = await signer.getAddress();
+            
+            const signer = await getSigner(providerOrSigner);
 
             const data = orderbook.interface.encodeFunctionData("batchUpdate", [
                 buyPrices,
@@ -65,45 +67,18 @@ export abstract class OrderBatcher {
                 batchUpdate.postOnly
             ]);
 
-            const tx: ethers.providers.TransactionRequest = {
-                to: orderbook.address,
-                from: address,
+            const tx = await buildTransaction(
+                signer,
+                orderbook.target as string,
                 data,
-                ...(batchUpdate.txOptions?.nonce !== undefined && { nonce: batchUpdate.txOptions.nonce }),
-                ...(batchUpdate.txOptions?.gasLimit && { gasLimit: batchUpdate.txOptions.gasLimit }),
-                ...(batchUpdate.txOptions?.gasPrice && { gasPrice: batchUpdate.txOptions.gasPrice }),
-                ...(batchUpdate.txOptions?.maxFeePerGas && { maxFeePerGas: batchUpdate.txOptions.maxFeePerGas }),
-                ...(batchUpdate.txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: batchUpdate.txOptions.maxPriorityFeePerGas })
-            };
-
-            const [gasLimit, baseGasPrice] = await Promise.all([
-                !tx.gasLimit ? signer.estimateGas({
-                    ...tx,
-                    gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-                }) : Promise.resolve(tx.gasLimit),
-                (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
-            ]);
-
-            if (!tx.gasLimit) {
-                tx.gasLimit = gasLimit;
-            }
-
-            if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-                if (batchUpdate.txOptions?.priorityFee) {
-                    const priorityFeeWei = ethers.utils.parseUnits(
-                        batchUpdate.txOptions.priorityFee.toString(),
-                        'gwei'
-                    );
-                    tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-                } else {
-                    tx.gasPrice = baseGasPrice;
-                }
-            }
+                BigInt(0),
+                batchUpdate.txOptions
+            );
 
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait();
 
-            return receipt;
+            return receipt!;
         } catch (e: any) {
             if (!e.error) {
                 throw e;

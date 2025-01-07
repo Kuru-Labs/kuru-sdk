@@ -14,11 +14,11 @@ const {
 const privateKey = process.env.PRIVATE_KEY as string;
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-    const baseAmount = ethers.utils.parseEther("100");
-    const quoteAmount = ethers.utils.parseEther("0.1");
+    const baseAmount = ethers.parseEther("100");
+    const quoteAmount = ethers.parseEther("0.1");
 
     console.log("Vault liquidity");
 
@@ -70,7 +70,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
     );
     console.log(
         "Initial deposit successful. Transaction hash:",
-        depositReceipt.transactionHash
+        depositReceipt.hash
     );
 
     // Get vault balance (shares)
@@ -91,11 +91,11 @@ const privateKey = process.env.PRIVATE_KEY as string;
     );
     console.log(
         "Withdrawal successful. Transaction hash:",
-        withdrawReceipt.transactionHash
+        withdrawReceipt.hash
     );
 
     // Deposit again using token1 function
-    const token1Amount = ethers.utils.parseEther("100");
+    const token1Amount = ethers.parseEther("100");
     const secondDepositReceipt = await KuruSdk.Vault.depositBasedOnAmount1(
         token1Amount,
         vaultAddress,
@@ -105,6 +105,6 @@ const privateKey = process.env.PRIVATE_KEY as string;
     );
     console.log(
         "Second deposit successful. Transaction hash:",
-        secondDepositReceipt.transactionHash
+        secondDepositReceipt.hash
     );
 })().catch(console.error);

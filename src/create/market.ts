@@ -7,6 +7,7 @@ import { extractErrorMessage } from "../utils";
 
 // ============ Config Imports ============
 import routerAbi from "../../abi/Router.json";
+import { buildTransaction } from "../utils/transaction";
 
 export class ParamCreator {
 
@@ -18,19 +19,17 @@ export class ParamCreator {
         type: number,
         baseAssetAddress: string,
         quoteAssetAddress: string,
-        sizePrecision: ethers.BigNumber,
-        pricePrecision: ethers.BigNumber,
-        tickSize: ethers.BigNumber,
-        minSize: ethers.BigNumber,
-        maxSize: ethers.BigNumber,
+        sizePrecision: bigint,
+        pricePrecision: bigint,
+        tickSize: bigint,
+        minSize: bigint,
+        maxSize: bigint,
         takerFeeBps: number,
         makerFeeBps: number,
-        kuruAmmSpread: ethers.BigNumber,
+        kuruAmmSpread: bigint,
         txOptions?: TransactionOptions
-    ): Promise<ethers.providers.TransactionRequest> {
-        const address = await signer.getAddress();
-
-        const routerInterface = new ethers.utils.Interface(routerAbi.abi);
+    ): Promise<ethers.TransactionRequest> {
+        const routerInterface = new ethers.Interface(routerAbi.abi);
         const data = routerInterface.encodeFunctionData("deployProxy", [
             type,
             baseAssetAddress,
@@ -45,40 +44,13 @@ export class ParamCreator {
             kuruAmmSpread
         ]);
 
-        const tx: ethers.providers.TransactionRequest = {
-            to: routerAddress,
-            from: address,
+        const tx = await buildTransaction(
+            signer,
+            routerAddress,
             data,
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
-
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
+            BigInt(0),
+            txOptions
+        );
 
         return tx;
     }
@@ -89,14 +61,14 @@ export class ParamCreator {
         type: number,
         baseAssetAddress: string,
         quoteAssetAddress: string,
-        sizePrecision: ethers.BigNumber,
-        pricePrecision: ethers.BigNumber,
-        tickSize: ethers.BigNumber,
-        minSize: ethers.BigNumber,
-        maxSize: ethers.BigNumber,
+        sizePrecision: bigint,
+        pricePrecision: bigint,
+        tickSize: bigint,
+        minSize: bigint,
+        maxSize: bigint,
         takerFeeBps: number,
         makerFeeBps: number,
-        kuruAmmSpread: ethers.BigNumber,
+        kuruAmmSpread: bigint,
         txOptions?: TransactionOptions
     ): Promise<string> {
         const router = new ethers.Contract(routerAddress, routerAbi.abi, signer);
@@ -122,11 +94,11 @@ export class ParamCreator {
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
 
-            const marketRegisteredLog = receipt.logs.find(
+            const marketRegisteredLog = receipt?.logs.find(
                 log => {
                     try {
                         const parsedLog = router.interface.parseLog(log);
-                        return parsedLog.name === "MarketRegistered";
+                        return parsedLog?.name === "MarketRegistered";
                     } catch {
                         return false;
                     }
@@ -138,7 +110,7 @@ export class ParamCreator {
             }
 
             const parsedLog = router.interface.parseLog(marketRegisteredLog);
-            return parsedLog.args.market;
+            return parsedLog?.args.market;
         } catch (e: any) {
             console.log({ e });
             if (!e.error) {
@@ -222,22 +194,21 @@ export class ParamCreator {
         if(priceDecimals > 9) {
             throw new Error("Price precision exceeds maximum (9 decimals)");
         }
-
-        // Use the fixed notation strings for further calculations
-        const pricePrecision = ethers.BigNumber.from(Math.pow(10, priceDecimals));
-        const tickSizeInPrecision = ethers.utils.parseUnits(tickStr, priceDecimals);
+        const pricePrecision = BigInt(Math.pow(10, priceDecimals));
+        const tickSizeString = tickSize.toFixed(priceDecimals);
+        const tickSizeInPrecision = ethers.parseUnits(tickSizeString, priceDecimals);
         
         // Calculate size precision based on max price * price precision
         const maxPriceWithPrecision = maxPrice * Math.pow(10, priceDecimals);
         const sizeDecimalsPower = Math.floor(Math.log10(maxPriceWithPrecision));
         const sizeDecimals = Math.max(this.countDecimals(minSize), sizeDecimalsPower);
-        const sizePrecision = ethers.BigNumber.from(Math.pow(10, sizeDecimals));
+        const sizePrecision = BigInt(Math.pow(10, sizeDecimals));
 
-        const maxSizeInPrecision = this.getMaxSizeAtPrice(ethers.utils.parseUnits(
+        const maxSizeInPrecision = this.getMaxSizeAtPrice(ethers.parseUnits(
             currentPrice.toFixed(priceDecimals), 
             priceDecimals
-        ), ethers.BigNumber.from(sizePrecision));
-        const minSizeInPrecision = ethers.utils.parseUnits(minSize.toString(), sizeDecimals);
+        ), sizePrecision);
+        const minSizeInPrecision = ethers.parseUnits(minSize.toString(), sizeDecimals);
         return {
             pricePrecision: pricePrecision,
             sizePrecision: sizePrecision,
@@ -260,7 +231,7 @@ export class ParamCreator {
         return { precision: Math.pow(10, neededPrecision) };
     }
 
-    getSizePrecision(maxPriceInPricePrecision: ethers.BigNumber) : { precision: number } | { error: string } {
+    getSizePrecision(maxPriceInPricePrecision: bigint) : { precision: number } | { error: string } {
         const numDigits = maxPriceInPricePrecision.toString().length;
         
         return { precision: Math.pow(10, numDigits) };
@@ -273,14 +244,14 @@ export class ParamCreator {
         return { minPrice, maxPrice };
     }
 
-    getMaxSizeAtPrice(price: ethers.BigNumber, sizePrecision: ethers.BigNumber) : ethers.BigNumber {
-        const UINT32_MAX = ethers.BigNumber.from(2).pow(32).sub(1);
-        const rawMaxSize = UINT32_MAX.mul(sizePrecision).div(price);
+    getMaxSizeAtPrice(price: bigint, sizePrecision: bigint) : bigint {
+        const UINT32_MAX = BigInt(2) ** BigInt(32) - BigInt(1);
+        const rawMaxSize = (UINT32_MAX * sizePrecision) / price;
         // Convert to string to count digits
         const numDigits = rawMaxSize.toString().length;
         
         // Calculate nearest power of 10 (rounding down)
-        const maxSize = ethers.BigNumber.from(10).pow(numDigits - 1);
+        const maxSize = BigInt(10) ** BigInt(numDigits - 1);
         
         return maxSize;
     }
