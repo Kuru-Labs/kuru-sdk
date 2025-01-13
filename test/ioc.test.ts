@@ -11,7 +11,7 @@ describe("IOC (Market Orders) Integration Tests", () => {
   // Configuration
   const RPC_ENDPOINT = process.env.RPC_URL!;
   const PRIVATE_KEY = process.env.PK!;
-  const ORDERBOOK_ADDRESS = "0x0793992d027aa1b45471e7a901488e12b0c656ea"; // mon-usdc
+  const ORDERBOOK_ADDRESS = "0xd8336cB07D4BE511cCaF06B799851E1A80F98c71"; // mon-usdc
   
   let provider: ethers.JsonRpcProvider;
   let signer: ethers.Wallet;
@@ -28,12 +28,12 @@ describe("IOC (Market Orders) Integration Tests", () => {
 
     it("should execute a market buy order", async () => {
       const order = {
-        size: 1, // Amount of quote asset to spend
-        minAmountOut: 0.5, // Minimum base asset to receive
+        size: 0.001, // Amount of quote asset to spend
+        minAmountOut: 0, // Minimum base asset to receive
         isBuy: true,
         fillOrKill: false,
         approveTokens: true,
-        isMargin: true,
+        isMargin: false,
         txOptions: undefined
       };
 
@@ -51,8 +51,8 @@ describe("IOC (Market Orders) Integration Tests", () => {
 
     it("should execute a market sell order", async () => {
       const order = {
-        size: 50, // Amount of base asset to sell
-        minAmountOut: 4, // Minimum quote asset to receive
+        size: 0.001, // Amount of base asset to sell
+        minAmountOut: 0.0005, // Minimum quote asset to receive
         isBuy: false,
         fillOrKill: false,
         approveTokens: true,
