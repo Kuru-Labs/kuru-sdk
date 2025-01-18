@@ -1,2 +1,2 @@
-export * from "./vaultFunctions";
-export * from "./vaultParams";
+export * from "./vault";
+export * from "./params";
