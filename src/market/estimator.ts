@@ -52,11 +52,18 @@ export abstract class CostEstimator {
         }
     }
 
+    /**
+     * @dev Estimates the amount of quote tokens received for a market sell order.
+     * @param providerOrSigner - The ethers.js provider to interact with the blockchain.
+     * @param orderbookAddress - The address of the order book contract.
+     * @param size - The size of the base asset to sell in size precision.
+     * @returns A promise that resolves to the amount of quote tokens received.
+     */
     static async returnMarketSellEstimate(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         size: BigNumber
-    ): Promise<number> {
+    ): Promise<BigNumber> {
         const orderbook = new ethers.Contract(
             orderbookAddress,
             orderbookAbi.abi,
@@ -162,12 +169,19 @@ export abstract class CostEstimator {
             throw extractErrorMessage(e);
         }
     }
-
+    
+    /**
+     * @dev Estimates the amount of base tokens received for a market buy order.
+     * @param providerOrSigner - The ethers.js provider to interact with the blockchain.
+     * @param orderbookAddress - The address of the order book contract.
+     * @param size - The size of the base asset to buy in price precision.
+     * @returns A promise that resolves to the amount of base tokens received.
+     */
     static async returnMarketBuyEstimate(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         size: BigNumber
-    ): Promise<number> {
+    ): Promise<BigNumber> {
         const orderbook = new ethers.Contract(
             orderbookAddress,
             orderbookAbi.abi,
