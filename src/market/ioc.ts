@@ -336,7 +336,7 @@ async function placeAndExecuteMarketBuy(
 
 async function estimateGasBuy(
     orderbook: ethers.Contract,
-    marketParams: MarketParams,
+    _marketParams: MarketParams,
     quoteSize: BigNumber,
     minAmountOut: BigNumber,
     isMargin: boolean,
@@ -430,7 +430,7 @@ async function placeAndExecuteMarketSell(
 
 async function estimateGasSell(
     orderbook: ethers.Contract,
-    marketParams: MarketParams,
+    _marketParams: MarketParams,
     size: BigNumber,
     minAmountOut: BigNumber,
     isMargin: boolean,

@@ -20,8 +20,8 @@ export interface LIMIT {
 export interface MARKET {
     approveTokens: boolean;
     isBuy: boolean;
-    size: number;
-    minAmountOut: number;
+    size: BigNumber;
+    minAmountOut: BigNumber;
     isMargin: boolean;
     fillOrKill: boolean;
     txOptions?: TransactionOptions;
