@@ -10,8 +10,8 @@ export interface TransactionOptions {
 }
 
 export interface LIMIT {
-    price: number;
-    size: number;
+    price: string;
+    size: string;
     isBuy: boolean;
     postOnly: boolean;
     txOptions?: TransactionOptions;
@@ -20,8 +20,8 @@ export interface LIMIT {
 export interface MARKET {
     approveTokens: boolean;
     isBuy: boolean;
-    size: number;
-    minAmountOut: number;
+    size: string;
+    minAmountOut: string;
     isMargin: boolean;
     fillOrKill: boolean;
     txOptions?: TransactionOptions;

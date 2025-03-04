@@ -2,7 +2,11 @@
 import { BigNumber, ContractReceipt, ethers } from "ethers";
 
 // ============ Internal Imports ============
-import { extractErrorMessage, approveToken, estimateApproveGas } from "../utils";
+import {
+    extractErrorMessage,
+    approveToken,
+    estimateApproveGas,
+} from "../utils";
 import { TransactionOptions } from "src/types";
 
 // ============ Config Imports ============
@@ -15,15 +19,22 @@ export abstract class MarginDeposit {
         marginAccountAddress: string,
         userAddress: string,
         tokenAddress: string,
-        amount: number,
+        amount: string,
         decimals: number,
         approveTokens: boolean,
-        txOptions?: TransactionOptions,
+        txOptions?: TransactionOptions
     ): Promise<ContractReceipt> {
         try {
-            const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
-            
-            if (approveTokens && tokenAddress !== ethers.constants.AddressZero) {
+            const tokenContract = new ethers.Contract(
+                tokenAddress,
+                erc20Abi.abi,
+                providerOrSigner
+            );
+
+            if (
+                approveTokens &&
+                tokenAddress !== ethers.constants.AddressZero
+            ) {
                 await approveToken(
                     tokenContract,
                     marginAccountAddress,
@@ -31,7 +42,10 @@ export abstract class MarginDeposit {
                     providerOrSigner
                 );
             }
-            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
+            const formattedAmount = ethers.utils.parseUnits(
+                amount.toString(),
+                decimals
+            );
             const tx = await MarginDeposit.constructDepositTransaction(
                 tokenContract.signer,
                 marginAccountAddress,
@@ -41,9 +55,10 @@ export abstract class MarginDeposit {
                 txOptions
             );
 
-            const signer = providerOrSigner instanceof ethers.Signer 
-                ? providerOrSigner 
-                : providerOrSigner.getSigner();
+            const signer =
+                providerOrSigner instanceof ethers.Signer
+                    ? providerOrSigner
+                    : providerOrSigner.getSigner();
             const transaction = await signer.sendTransaction(tx);
             return await transaction.wait();
         } catch (e: any) {
@@ -63,32 +78,45 @@ export abstract class MarginDeposit {
         txOptions?: TransactionOptions
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
-        const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
+        const marginAccountInterface = new ethers.utils.Interface(
+            marginAccountAbi.abi
+        );
 
         const data = marginAccountInterface.encodeFunctionData("deposit", [
             userAddress,
             tokenAddress,
-            amount
+            amount,
         ]);
 
         const tx: ethers.providers.TransactionRequest = {
             to: marginAccountAddress,
             from: address,
             data,
-            value: tokenAddress === ethers.constants.AddressZero ? amount : BigNumber.from(0),
+            value:
+                tokenAddress === ethers.constants.AddressZero
+                    ? amount
+                    : BigNumber.from(0),
             ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
             ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+            ...(txOptions?.maxFeePerGas && {
+                maxFeePerGas: txOptions.maxFeePerGas,
+            }),
+            ...(txOptions?.maxPriorityFeePerGas && {
+                maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas,
+            }),
         };
 
         const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+            !tx.gasLimit
+                ? signer.estimateGas({
+                      ...tx,
+                      gasPrice: ethers.utils.parseUnits("1", "gwei"),
+                  })
+                : Promise.resolve(tx.gasLimit),
+            !tx.gasPrice && !tx.maxFeePerGas
+                ? signer.provider!.getGasPrice()
+                : Promise.resolve(undefined),
         ]);
 
         if (!tx.gasLimit) {
@@ -99,7 +127,7 @@ export abstract class MarginDeposit {
             if (txOptions?.priorityFee) {
                 const priorityFeeWei = ethers.utils.parseUnits(
                     txOptions.priorityFee.toString(),
-                    'gwei'
+                    "gwei"
                 );
                 tx.gasPrice = baseGasPrice.add(priorityFeeWei);
             } else {
@@ -117,26 +145,46 @@ export abstract class MarginDeposit {
         tokenAddress: string,
         amount: number,
         decimals: number,
-        approveTokens: boolean,
+        approveTokens: boolean
     ): Promise<BigNumber> {
         try {
-            const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
-            const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
-    
-            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
-    
+            const tokenContract = new ethers.Contract(
+                tokenAddress,
+                erc20Abi.abi,
+                providerOrSigner
+            );
+            const marginAccount = new ethers.Contract(
+                marginAccountAddress,
+                marginAccountAbi.abi,
+                providerOrSigner
+            );
+
+            const formattedAmount = ethers.utils.parseUnits(
+                amount.toString(),
+                decimals
+            );
+
             let gasEstimate: BigNumber;
             if (tokenAddress === ethers.constants.AddressZero) {
-                gasEstimate = await marginAccount.estimateGas.deposit(userAddress, tokenAddress, formattedAmount, { value: formattedAmount });
+                gasEstimate = await marginAccount.estimateGas.deposit(
+                    userAddress,
+                    tokenAddress,
+                    formattedAmount,
+                    { value: formattedAmount }
+                );
             } else {
                 if (approveTokens) {
                     gasEstimate = await estimateApproveGas(
                         tokenContract,
                         marginAccountAddress,
-                        ethers.utils.parseUnits(amount.toString(), decimals),
+                        ethers.utils.parseUnits(amount.toString(), decimals)
                     );
                 } else {
-                    gasEstimate = await marginAccount.estimateGas.deposit(userAddress, tokenAddress, formattedAmount);
+                    gasEstimate = await marginAccount.estimateGas.deposit(
+                        userAddress,
+                        tokenAddress,
+                        formattedAmount
+                    );
                 }
             }
 

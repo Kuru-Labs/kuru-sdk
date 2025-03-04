@@ -75,7 +75,7 @@ export abstract class IOC {
             providerOrSigner
         );
 
-        const size = (order.size * (100 - slippageTolerance)) / 100;
+        const size = (Number(order.size) * (100 - slippageTolerance)) / 100;
 
         if (order.approveTokens) {
             return estimateApproveGas(
@@ -96,7 +96,7 @@ export abstract class IOC {
             ? estimateGasBuy(
                   orderbook,
                   marketParams,
-                  size,
+                  size.toString(),
                   order.minAmountOut,
                   order.isMargin ?? false,
                   order.fillOrKill
@@ -104,7 +104,7 @@ export abstract class IOC {
             : estimateGasSell(
                   orderbook,
                   marketParams,
-                  size,
+                  size.toString(),
                   order.minAmountOut,
                   order.isMargin ?? false,
                   order.fillOrKill
@@ -126,7 +126,7 @@ export abstract class IOC {
         signer: ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        quoteSize: number,
+        quoteSize: string,
         minAmountOut: BigNumber,
         isMargin: boolean,
         isFillOrKill: boolean,
@@ -135,15 +135,18 @@ export abstract class IOC {
         const address = await signer.getAddress();
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
 
-        const data = orderbookInterface.encodeFunctionData("placeAndExecuteMarketBuy", [
-            ethers.utils.parseUnits(
-                quoteSize.toString(),
-                log10BigNumber(marketParams.pricePrecision)
-            ),
-            minAmountOut,
-            isMargin,
-            isFillOrKill
-        ]);
+        const data = orderbookInterface.encodeFunctionData(
+            "placeAndExecuteMarketBuy",
+            [
+                ethers.utils.parseUnits(
+                    quoteSize.toString(),
+                    log10BigNumber(marketParams.pricePrecision)
+                ),
+                minAmountOut,
+                isMargin,
+                isFillOrKill,
+            ]
+        );
 
         const parsedQuoteSize = ethers.utils.parseUnits(
             quoteSize.toString(),
@@ -154,22 +157,32 @@ export abstract class IOC {
             to: orderbookAddress,
             from: address,
             data,
-            value: !isMargin && marketParams.quoteAssetAddress === ethers.constants.AddressZero
-                ? parsedQuoteSize
-                : BigNumber.from(0),
+            value:
+                !isMargin &&
+                marketParams.quoteAssetAddress === ethers.constants.AddressZero
+                    ? parsedQuoteSize
+                    : BigNumber.from(0),
             ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
             ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+            ...(txOptions?.maxFeePerGas && {
+                maxFeePerGas: txOptions.maxFeePerGas,
+            }),
+            ...(txOptions?.maxPriorityFeePerGas && {
+                maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas,
+            }),
         };
 
         const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+            !tx.gasLimit
+                ? signer.estimateGas({
+                      ...tx,
+                      gasPrice: ethers.utils.parseUnits("1", "gwei"),
+                  })
+                : Promise.resolve(tx.gasLimit),
+            !tx.gasPrice && !tx.maxFeePerGas
+                ? signer.provider!.getGasPrice()
+                : Promise.resolve(undefined),
         ]);
 
         if (!tx.gasLimit) {
@@ -180,7 +193,7 @@ export abstract class IOC {
             if (txOptions?.priorityFee) {
                 const priorityFeeWei = ethers.utils.parseUnits(
                     txOptions.priorityFee.toString(),
-                    'gwei'
+                    "gwei"
                 );
                 tx.gasPrice = baseGasPrice.add(priorityFeeWei);
             } else {
@@ -192,17 +205,17 @@ export abstract class IOC {
     }
 
     /* @dev Constructs a market sell transaction.
-    * @param signer - The signer instance.
-    * @param orderbookAddress - The address of the order book contract.
-    * @param marketParams - The market parameters including price and size precision.
-    * @param size - The size of the base asset to sell.
-    * @param minAmountOut - The minimum amount of quote asset to receive.
-    */
+     * @param signer - The signer instance.
+     * @param orderbookAddress - The address of the order book contract.
+     * @param marketParams - The market parameters including price and size precision.
+     * @param size - The size of the base asset to sell.
+     * @param minAmountOut - The minimum amount of quote asset to receive.
+     */
     static async constructMarketSellTransaction(
         signer: ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        size: number,
+        size: string,
         minAmountOut: BigNumber,
         isMargin: boolean,
         isFillOrKill: boolean,
@@ -211,66 +224,77 @@ export abstract class IOC {
         const address = await signer.getAddress();
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
 
-        const data = orderbookInterface.encodeFunctionData("placeAndExecuteMarketSell", [
-            ethers.utils.parseUnits(
-                size.toString(), 
-                log10BigNumber(marketParams.sizePrecision)
-            ),
-            minAmountOut,
-            isMargin,
-            isFillOrKill
-        ]);
-   
+        const data = orderbookInterface.encodeFunctionData(
+            "placeAndExecuteMarketSell",
+            [
+                ethers.utils.parseUnits(
+                    size.toString(),
+                    log10BigNumber(marketParams.sizePrecision)
+                ),
+                minAmountOut,
+                isMargin,
+                isFillOrKill,
+            ]
+        );
+
         const parsedSize = ethers.utils.parseUnits(
             size.toString(),
             marketParams.baseAssetDecimals
         );
-   
+
         const tx: ethers.providers.TransactionRequest = {
             to: orderbookAddress,
             from: address,
             data,
-            value: !isMargin && marketParams.baseAssetAddress === ethers.constants.AddressZero
-                ? parsedSize
-                : BigNumber.from(0),
+            value:
+                !isMargin &&
+                marketParams.baseAssetAddress === ethers.constants.AddressZero
+                    ? parsedSize
+                    : BigNumber.from(0),
             ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
             ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+            ...(txOptions?.maxFeePerGas && {
+                maxFeePerGas: txOptions.maxFeePerGas,
+            }),
+            ...(txOptions?.maxPriorityFeePerGas && {
+                maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas,
+            }),
         };
-   
+
         const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+            !tx.gasLimit
+                ? signer.estimateGas({
+                      ...tx,
+                      gasPrice: ethers.utils.parseUnits("1", "gwei"),
+                  })
+                : Promise.resolve(tx.gasLimit),
+            !tx.gasPrice && !tx.maxFeePerGas
+                ? signer.provider!.getGasPrice()
+                : Promise.resolve(undefined),
         ]);
-   
+
         if (!tx.gasLimit) {
             tx.gasLimit = gasLimit;
         }
-   
+
         if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
             if (txOptions?.priorityFee) {
                 const priorityFeeWei = ethers.utils.parseUnits(
                     txOptions.priorityFee.toString(),
-                    'gwei'
+                    "gwei"
                 );
                 tx.gasPrice = baseGasPrice.add(priorityFeeWei);
             } else {
                 tx.gasPrice = baseGasPrice;
             }
         }
-   
+
         return tx;
-   }
+    }
 }
 
 // ======================== INTERNAL HELPER FUNCTIONS ========================
-
-
 
 /**
  * @dev Places and executes a market buy order.
@@ -292,8 +316,8 @@ async function placeAndExecuteMarketBuy(
     marketAddress: string,
     marketParams: MarketParams,
     approveTokens: boolean,
-    quoteSize: number,
-    minAmountOut: number,
+    quoteSize: string,
+    minAmountOut: string,
     isMargin: boolean,
     isFillOrKill: boolean,
     txOptions?: TransactionOptions
@@ -353,8 +377,8 @@ async function placeAndExecuteMarketBuy(
 async function estimateGasBuy(
     orderbook: ethers.Contract,
     marketParams: MarketParams,
-    quoteSize: number,
-    minAmountOut: number,
+    quoteSize: string,
+    minAmountOut: string,
     isMargin: boolean,
     isFillOrKill: boolean
 ): Promise<BigNumber> {
@@ -398,8 +422,8 @@ async function placeAndExecuteMarketSell(
     marketAddress: string,
     marketParams: MarketParams,
     approveTokens: boolean,
-    size: number,
-    minAmountOut: number,
+    size: string,
+    minAmountOut: string,
     isMargin: boolean,
     isFillOrKill: boolean,
     txOptions?: TransactionOptions
@@ -460,8 +484,8 @@ async function placeAndExecuteMarketSell(
 async function estimateGasSell(
     orderbook: ethers.Contract,
     marketParams: MarketParams,
-    size: number,
-    minAmountOut: number,
+    size: string,
+    minAmountOut: string,
     isMargin: boolean,
     isFillOrKill: boolean
 ): Promise<BigNumber> {
