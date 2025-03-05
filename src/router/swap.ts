@@ -10,6 +10,7 @@ import {
 } from "../utils";
 import { RouteOutput } from "../types/pool";
 import { calculateDynamicSlippage } from "../utils";
+import { contructTxGasData } from "src/utils/transaction";
 
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
@@ -47,43 +48,9 @@ export abstract class TokenSwap {
             minTokenOutAmount
         ]);
 
-        const tx: ethers.providers.TransactionRequest = {
-            to: routerAddress,
-            from: address,
-            data,
-            value: routeOutput.nativeSend[0] ? tokenInAmount : 0,
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
+        const value = routeOutput.nativeSend[0] ? tokenInAmount : BigNumber.from(0);
 
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
-
-        return tx;
+        return contructTxGasData(signer, routerAddress, address, data, txOptions, value);
     }
 
     /**

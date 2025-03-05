@@ -7,6 +7,7 @@ import { extractErrorMessage } from "../utils";
 
 // ============ Config Imports ============
 import monadDeployerAbi from "../../abi/MonadDeployer.json";
+import { contructTxGasData } from "src/utils/transaction";
 
 export interface TokenParams {
     name: string;
@@ -48,43 +49,9 @@ export class MonadDeployer {
             marketParams
         ]);
 
-        const tx: ethers.providers.TransactionRequest = {
-            to: deployerAddress,
-            from: address,
-            data,
-            value: marketParams.nativeTokenAmount.add(kuruCollectiveFee),
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
+        const value = marketParams.nativeTokenAmount.add(kuruCollectiveFee);
 
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
-
-        return tx;
+        return contructTxGasData(signer, deployerAddress, address, data, txOptions, value);
     }
 
     async deployTokenAndMarket(

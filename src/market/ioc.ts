@@ -13,6 +13,7 @@ import { MarketParams, MARKET, TransactionOptions } from "../types";
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
 import erc20Abi from "../../abi/IERC20.json";
+import { contructTxGasData } from "src/utils/transaction";
 
 export abstract class IOC {
     /**
@@ -153,55 +154,12 @@ export abstract class IOC {
             marketParams.quoteAssetDecimals
         );
 
-        const tx: ethers.providers.TransactionRequest = {
-            to: orderbookAddress,
-            from: address,
-            data,
-            value:
-                !isMargin &&
-                marketParams.quoteAssetAddress === ethers.constants.AddressZero
-                    ? parsedQuoteSize
-                    : BigNumber.from(0),
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && {
-                maxFeePerGas: txOptions.maxFeePerGas,
-            }),
-            ...(txOptions?.maxPriorityFeePerGas && {
-                maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas,
-            }),
-        };
+        const value = !isMargin &&
+            marketParams.quoteAssetAddress === ethers.constants.AddressZero
+            ? parsedQuoteSize
+            : BigNumber.from(0);
 
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit
-                ? signer.estimateGas({
-                      ...tx,
-                      gasPrice: ethers.utils.parseUnits("1", "gwei"),
-                  })
-                : Promise.resolve(tx.gasLimit),
-            !tx.gasPrice && !tx.maxFeePerGas
-                ? signer.provider!.getGasPrice()
-                : Promise.resolve(undefined),
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    "gwei"
-                );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
-
-        return tx;
+        return contructTxGasData(signer, orderbookAddress, address, data, txOptions, value);
     }
 
     /* @dev Constructs a market sell transaction.
@@ -242,55 +200,12 @@ export abstract class IOC {
             marketParams.baseAssetDecimals
         );
 
-        const tx: ethers.providers.TransactionRequest = {
-            to: orderbookAddress,
-            from: address,
-            data,
-            value:
-                !isMargin &&
-                marketParams.baseAssetAddress === ethers.constants.AddressZero
-                    ? parsedSize
-                    : BigNumber.from(0),
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && {
-                maxFeePerGas: txOptions.maxFeePerGas,
-            }),
-            ...(txOptions?.maxPriorityFeePerGas && {
-                maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas,
-            }),
-        };
+        const value = !isMargin &&
+            marketParams.baseAssetAddress === ethers.constants.AddressZero
+                ? parsedSize
+                : BigNumber.from(0);
 
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit
-                ? signer.estimateGas({
-                      ...tx,
-                      gasPrice: ethers.utils.parseUnits("1", "gwei"),
-                  })
-                : Promise.resolve(tx.gasLimit),
-            !tx.gasPrice && !tx.maxFeePerGas
-                ? signer.provider!.getGasPrice()
-                : Promise.resolve(undefined),
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    "gwei"
-                );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
-
-        return tx;
+        return contructTxGasData(signer, orderbookAddress, address, data, txOptions, value);
     }
 }
 

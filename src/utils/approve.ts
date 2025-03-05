@@ -7,7 +7,7 @@ import { TransactionOptions } from "../types";
 // ============ Internal Imports ============
 import { extractErrorMessage } from "../utils";
 import erc20Abi from "../../abi/IERC20.json";
-
+import { contructTxGasData } from "src/utils/transaction";
 const getOwnerAddress = async (
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
 ): Promise<string> => {
@@ -41,49 +41,7 @@ export async function constructApproveTransaction(
         size,
     ]);
 
-    const tx: ethers.providers.TransactionRequest = {
-        to: tokenContractAddress,
-        from: address,
-        data,
-        ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-        ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-        ...(txOptions?.maxFeePerGas && {
-            maxFeePerGas: txOptions.maxFeePerGas,
-        }),
-        ...(txOptions?.maxPriorityFeePerGas && {
-            maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas,
-        }),
-    };
-
-    const [gasLimit, baseGasPrice] = await Promise.all([
-        !tx.gasLimit
-            ? signer.estimateGas({
-                  ...tx,
-                  gasPrice: ethers.utils.parseUnits("1", "gwei"),
-              })
-            : Promise.resolve(tx.gasLimit),
-        !tx.gasPrice && !tx.maxFeePerGas
-            ? signer.provider!.getGasPrice()
-            : Promise.resolve(undefined),
-    ]);
-
-    if (!tx.gasLimit) {
-        tx.gasLimit = gasLimit;
-    }
-
-    if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-        if (txOptions?.priorityFee) {
-            const priorityFeeWei = ethers.utils.parseUnits(
-                txOptions.priorityFee.toString(),
-                "gwei"
-            );
-            tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-        } else {
-            tx.gasPrice = baseGasPrice;
-        }
-    }
-
-    return tx;
+    return contructTxGasData(signer, tokenContractAddress, address, data, txOptions);
 }
 
 /**
