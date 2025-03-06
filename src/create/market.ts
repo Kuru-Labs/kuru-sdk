@@ -7,7 +7,7 @@ import { extractErrorMessage } from "../utils";
 
 // ============ Config Imports ============
 import routerAbi from "../../abi/Router.json";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 
 export class ParamCreator {
 
@@ -46,7 +46,7 @@ export class ParamCreator {
             kuruAmmSpread
         ]);
 
-        return contructTxGasData(signer, routerAddress, address, data, txOptions);
+        return constructTxGasData(signer, routerAddress, address, data, txOptions);
     }
 
     async deployMarket(

@@ -13,7 +13,7 @@ import { MarketParams, MARKET, TransactionOptions } from "../types";
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
 import erc20Abi from "../../abi/IERC20.json";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 
 export abstract class IOC {
     /**
@@ -159,7 +159,7 @@ export abstract class IOC {
             ? parsedQuoteSize
             : BigNumber.from(0);
 
-        return contructTxGasData(signer, orderbookAddress, address, data, txOptions, value);
+        return constructTxGasData(signer, orderbookAddress, address, data, txOptions, value);
     }
 
     /* @dev Constructs a market sell transaction.
@@ -205,7 +205,7 @@ export abstract class IOC {
                 ? parsedSize
                 : BigNumber.from(0);
 
-        return contructTxGasData(signer, orderbookAddress, address, data, txOptions, value);
+        return constructTxGasData(signer, orderbookAddress, address, data, txOptions, value);
     }
 }
 

@@ -12,7 +12,7 @@ import { TransactionOptions } from "src/types";
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
 import marginAccountAbi from "../../abi/MarginAccount.json";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 
 export abstract class MarginDeposit {
     static async deposit(
@@ -90,7 +90,7 @@ export abstract class MarginDeposit {
             ? amount
             : BigNumber.from(0);
 
-        return contructTxGasData(signer, marginAccountAddress, address, data, txOptions, value);
+        return constructTxGasData(signer, marginAccountAddress, address, data, txOptions, value);
 
     }
 

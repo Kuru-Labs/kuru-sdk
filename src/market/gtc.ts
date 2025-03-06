@@ -4,7 +4,7 @@ import { ethers, BigNumber, ContractReceipt } from "ethers";
 // ============ Internal Imports ============
 import { clipToDecimals, extractErrorMessage, log10BigNumber } from "../utils";
 import { MarketParams, LIMIT, TransactionOptions } from "../types";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
@@ -128,7 +128,7 @@ export abstract class GTC {
             postOnly,
         ]);
 
-        return contructTxGasData(signer, orderbookAddress, address, data, txOptions);
+        return constructTxGasData(signer, orderbookAddress, address, data, txOptions);
     }
 
     /**
@@ -158,7 +158,7 @@ export abstract class GTC {
             postOnly,
         ]);
 
-        return contructTxGasData(signer, orderbookAddress, address, data, txOptions);
+        return constructTxGasData(signer, orderbookAddress, address, data, txOptions);
     }
 
     /**

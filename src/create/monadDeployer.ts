@@ -7,7 +7,7 @@ import { extractErrorMessage } from "../utils";
 
 // ============ Config Imports ============
 import monadDeployerAbi from "../../abi/MonadDeployer.json";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 
 export interface TokenParams {
     name: string;
@@ -51,7 +51,7 @@ export class MonadDeployer {
 
         const value = marketParams.nativeTokenAmount.add(kuruCollectiveFee);
 
-        return contructTxGasData(signer, deployerAddress, address, data, txOptions, value);
+        return constructTxGasData(signer, deployerAddress, address, data, txOptions, value);
     }
 
     async deployTokenAndMarket(

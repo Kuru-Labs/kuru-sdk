@@ -7,7 +7,7 @@ import { extractErrorMessage } from "../utils";
 // ============ Config Imports ============
 import marginAccountAbi from "../../abi/MarginAccount.json";
 import { TransactionOptions } from "src/types";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 export abstract class MarginWithdraw {
     static async withdraw(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
@@ -57,7 +57,7 @@ export abstract class MarginWithdraw {
             tokenAddress
         ]);
 
-        return contructTxGasData(signer, marginAccountAddress, address, data, txOptions);
+        return constructTxGasData(signer, marginAccountAddress, address, data, txOptions);
     }
 
     static async batchClaimMaxTokens(
@@ -92,7 +92,7 @@ export abstract class MarginWithdraw {
 
         const data = marginAccountInterface.encodeFunctionData("batchClaimMaxTokens", [tokens]);
 
-        return contructTxGasData(signer, marginAccountAddress, address, data, txOptions);
+        return constructTxGasData(signer, marginAccountAddress, address, data, txOptions);
     }
 
 }

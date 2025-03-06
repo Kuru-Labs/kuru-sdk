@@ -1,7 +1,7 @@
 import { providers, Signer, utils, BigNumber } from "ethers";
 import { TransactionOptions } from "src/types";
 
-export const contructTxGasData = async (
+export const constructTxGasData = async (
     signer: Signer,
     toAddresss: string,
     fromAddress: string,

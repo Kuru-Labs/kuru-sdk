@@ -4,7 +4,7 @@ import { ethers, BigNumber, ContractReceipt } from "ethers";
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from "../utils";
 import { MarketParams, BATCH } from "../types";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
@@ -66,7 +66,7 @@ export abstract class OrderBatcher {
                 batchUpdate.postOnly
             ]);
 
-            const tx = await contructTxGasData(signer, orderbookAddress, address, data, batchUpdate.txOptions);
+            const tx = await constructTxGasData(signer, orderbookAddress, address, data, batchUpdate.txOptions);
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait();
 

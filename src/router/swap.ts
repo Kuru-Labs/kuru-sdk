@@ -10,7 +10,7 @@ import {
 } from "../utils";
 import { RouteOutput } from "../types/pool";
 import { calculateDynamicSlippage } from "../utils";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
@@ -50,7 +50,7 @@ export abstract class TokenSwap {
 
         const value = routeOutput.nativeSend[0] ? tokenInAmount : BigNumber.from(0);
 
-        return contructTxGasData(signer, routerAddress, address, data, txOptions, value);
+        return constructTxGasData(signer, routerAddress, address, data, txOptions, value);
     }
 
     /**

@@ -7,7 +7,7 @@ import { TransactionOptions } from "../types";
 // ============ Internal Imports ============
 import { extractErrorMessage } from "../utils";
 import erc20Abi from "../../abi/IERC20.json";
-import { contructTxGasData } from "src/utils/transaction";
+import { constructTxGasData } from "src/utils/transaction";
 const getOwnerAddress = async (
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
 ): Promise<string> => {
@@ -41,7 +41,7 @@ export async function constructApproveTransaction(
         size,
     ]);
 
-    return contructTxGasData(signer, tokenContractAddress, address, data, txOptions);
+    return constructTxGasData(signer, tokenContractAddress, address, data, txOptions);
 }
 
 /**
