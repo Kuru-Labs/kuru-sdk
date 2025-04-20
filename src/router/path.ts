@@ -8,11 +8,6 @@ import { Pool, Route, RouteOutput } from "../types/pool";
 import orderbookAbi from "../../abi/OrderBook.json";
 import utilsAbi from "../../abi/KuruUtils.json";
 
-interface BaseToken {
-    symbol: string;
-    address: string;
-}
-
 async function calculatePriceImpact(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     estimatorContractAddress: string,
