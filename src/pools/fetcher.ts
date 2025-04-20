@@ -22,6 +22,10 @@ export class PoolFetcher {
         return new PoolFetcher(baseUrl);
     }
 
+    getBaseUrl(): string {
+        return this.baseUrl;
+    }
+
     private addDirectPairs(
         tokenIn: string,
         tokenOut: string
