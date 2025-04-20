@@ -8,6 +8,11 @@ import { Pool, Route, RouteOutput } from "../types/pool";
 import orderbookAbi from "../../abi/OrderBook.json";
 import utilsAbi from "../../abi/KuruUtils.json";
 
+interface BaseToken {
+    symbol: string;
+    address: string;
+}
+
 export abstract class PathFinder {
     static async findBestPath(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
@@ -16,64 +21,72 @@ export abstract class PathFinder {
         amountIn: number,
         amountType: "amountOut" | "amountIn" = "amountIn",
         poolFetcher?: PoolFetcher,
-        pools?: Pool[],
+        customBaseTokens?: BaseToken[],
         estimatorContractAddress?: string
     ): Promise<RouteOutput> {
         // Normalize input addresses to lowercase
         const normalizedTokenIn = tokenIn.toLowerCase();
         const normalizedTokenOut = tokenOut.toLowerCase();
 
-        if (!pools) {
-            if (!poolFetcher) {
-                throw new Error("Either pools or poolFetcher must be provided");
+        try {
+            // Call the API to get the best route structure
+            const baseUrl = poolFetcher ? poolFetcher.getBaseUrl() : process.env.API_BASE_URL;
+            if (!baseUrl) {
+                throw new Error("No base URL available for API calls");
             }
-            pools = await poolFetcher.getAllPools(normalizedTokenIn, normalizedTokenOut);
-        } else {
-            // Normalize pool addresses
-            pools = pools.map(pool => ({
-                ...pool,
-                orderbook: pool.orderbook.toLowerCase(),
-                baseToken: pool.baseToken.toLowerCase(),
-                quoteToken: pool.quoteToken.toLowerCase()
-            }));
-        }
 
-        const routes = computeAllRoutes(normalizedTokenIn, normalizedTokenOut, pools);
+            const response = await fetch(`${baseUrl}/api/v2/routes/best`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    tokenIn: normalizedTokenIn,
+                    tokenOut: normalizedTokenOut,
+                    amountIn,
+                    amountType,
+                    customBaseTokens
+                }),
+            });
 
-        let bestRoute: RouteOutput = {
-            route: {
-                path: [],
-                tokenIn: "",
-                tokenOut: "",
-            },
-            isBuy: [],
-            nativeSend: [],
-            output: 0,
-            priceImpact: 0,
-            feeInBase: 0,
-        };
-
-        let bestOutput = 0;
-        for (const route of routes) {
-            const routeOutput = await (amountType === "amountOut"
-                ? computeRouteInput(providerOrSigner, route, amountIn)
-                : computeRouteOutput(providerOrSigner, route, amountIn));
-
-            if (routeOutput.output > bestOutput) {
-                bestRoute = routeOutput;
-                bestOutput = routeOutput.output;
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
             }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'Unknown error from API');
+            }
+
+            const bestRoute = result.data;
+
+            // Use existing functions to compute the actual output
+            const routeOutput = amountType === "amountOut"
+                ? await computeRouteInput(providerOrSigner, bestRoute.route, amountIn)
+                : await computeRouteOutput(providerOrSigner, bestRoute.route, amountIn);
+
+            // Calculate price impact if estimator contract is provided
+            if (estimatorContractAddress) {
+                const estimatorContract = new ethers.Contract(
+                    estimatorContractAddress,
+                    utilsAbi.abi,
+                    providerOrSigner
+                );
+                const orderbookAddresses = bestRoute.route.path.map((pool: Pool) => pool.orderbook);
+                const price = await estimatorContract.calculatePriceOverRoute(
+                    orderbookAddresses,
+                    routeOutput.isBuy
+                );
+                const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
+                const actualPrice = parseFloat((amountIn / routeOutput.output).toFixed(18));
+                routeOutput.priceImpact = parseFloat(((100 * actualPrice / priceInUnits) - 100).toFixed(2));
+            }
+
+            return routeOutput;
+        } catch (error) {
+            console.error('Error finding best path:', error);
+            throw error;
         }
-        if (estimatorContractAddress) {
-            const estimatorContract = new ethers.Contract(estimatorContractAddress, utilsAbi.abi, providerOrSigner);
-            const orderbookAddresses = bestRoute.route.path.map(pool => pool.orderbook);
-            const price = await estimatorContract.calculatePriceOverRoute(orderbookAddresses, bestRoute.isBuy);
-            const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
-            const actualPrice = parseFloat((amountIn / bestRoute.output).toFixed(18));
-            const priceImpact = ((100 * actualPrice / priceInUnits) - 100).toFixed(2);
-            bestRoute.priceImpact = parseFloat(priceImpact);
-        }
-        return bestRoute;
     }
 }
 
