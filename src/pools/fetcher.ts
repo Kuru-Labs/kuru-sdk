@@ -1,6 +1,9 @@
-// ============ Internal Imports ============
+// ============ External Imports ============
 import { ethers } from "ethers";
-import { BaseToken, MarketResponse, Pool } from "../types/pool";
+
+// ============ Internal Imports ============
+import { BaseToken, Pool, MarketResponse } from "../types";
+import { PairGenerator } from "./pairGenerator";
 import fetch from "cross-fetch";
 
 // Define your most important base tokens
@@ -24,37 +27,6 @@ export class PoolFetcher {
 
     getBaseUrl(): string {
         return this.baseUrl;
-    }
-
-    private addDirectPairs(
-        tokenIn: string,
-        tokenOut: string
-    ): { baseToken: string; quoteToken: string }[] {
-        return [
-            { baseToken: tokenIn, quoteToken: tokenOut },
-            { baseToken: tokenOut, quoteToken: tokenIn },
-        ];
-    }
-
-    private addBaseTokenPairs(
-        token: string,
-        baseTokens: BaseToken[]
-    ): { baseToken: string; quoteToken: string }[] {
-        return baseTokens.flatMap((base) => [
-            { baseToken: token, quoteToken: base.address },
-            { baseToken: base.address, quoteToken: token },
-        ]);
-    }
-
-    private addBasePairCombinations(
-        baseTokens: BaseToken[]
-    ): { baseToken: string; quoteToken: string }[] {
-        return baseTokens.flatMap((base1, index) =>
-            baseTokens.slice(index + 1).flatMap((base2) => [
-                { baseToken: base1.address, quoteToken: base2.address },
-                { baseToken: base2.address, quoteToken: base1.address },
-            ])
-        );
     }
 
     private async fetchMarketData(
@@ -81,7 +53,7 @@ export class PoolFetcher {
             throw new Error(
                 `Failed to fetch market data: ${JSON.stringify(error)}`
             );
-        }
+        }   
     }
 
     async getAllPools(
@@ -90,24 +62,12 @@ export class PoolFetcher {
         customBaseTokens?: BaseToken[]
     ): Promise<Pool[]> {
         try {
-            let pairs: { baseToken: string; quoteToken: string }[] = [];
             const baseTokens = customBaseTokens || BASE_TOKENS;
-
-            if (tokenInAddress && tokenOutAddress) {
-                // Add direct pairs
-                pairs.push(
-                    ...this.addDirectPairs(tokenInAddress, tokenOutAddress)
-                );
-
-                // Add pairs with base tokens
-                pairs.push(
-                    ...this.addBaseTokenPairs(tokenInAddress, baseTokens),
-                    ...this.addBaseTokenPairs(tokenOutAddress, baseTokens)
-                );
-            }
-
-            // Add base token combinations
-            pairs.push(...this.addBasePairCombinations(baseTokens));
+            const pairs = PairGenerator.generateAllPairs(
+                tokenInAddress || '',
+                tokenOutAddress || '',
+                baseTokens
+            );
 
             const data = await this.fetchMarketData(pairs);
 
