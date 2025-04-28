@@ -5,7 +5,7 @@ import { ethers } from "ethers";
 import { ParamFetcher, CostEstimator } from "../market";
 import { PoolFetcher } from "../pools";
 import { Pool, Route, RouteOutput } from "../types/pool";
-import { MarketParams } from "../types";
+import { MarketParams, VaultParams } from "../types";
 import orderbookAbi from "../../abi/OrderBook.json";
 import utilsAbi from "../../abi/KuruUtils.json";
 
@@ -81,7 +81,7 @@ export abstract class PathFinder {
     }
 }
 
-async function calculatePriceImpact(
+export async function calculatePriceImpact(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     estimatorContractAddress: string,
     route: RouteOutput,
@@ -102,7 +102,7 @@ async function calculatePriceImpact(
     return parseFloat(((100 * actualPrice / priceInUnits) - 100).toFixed(2));
 }
 
-function computeAllRoutes(
+export function computeAllRoutes(
     tokenIn: string,
     tokenOut: string,
     pools: Pool[],
@@ -139,11 +139,13 @@ function computeAllRoutes(
     return allPaths;
 }
 
-async function computeRouteInput(
+export async function computeRouteInput(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     route: Route,
     amountOut: number,
-    marketParamsMap?: Map<string, MarketParams>
+    marketParamsMap?: Map<string, MarketParams>,
+    l2BookMap?: Map<string, string>,
+    vaultParamsMap?: Map<string, VaultParams>
 ) {
     let currentToken = route.tokenIn;
     let output: number = amountOut;
@@ -169,12 +171,21 @@ async function computeRouteInput(
             providerOrSigner
         );
 
-        const l2Book = await orderbook.getL2Book({
-            from: ethers.constants.AddressZero,
-        });
-        const vaultParams = await orderbook.getVaultParams({
-            from: ethers.constants.AddressZero,
-        });
+        // Get L2 book from map if available, otherwise fetch it
+        let l2Book = l2BookMap?.get(orderbookAddress);
+        if (!l2Book) {
+            l2Book = await orderbook.getL2Book({
+                from: ethers.constants.AddressZero,
+            });
+        }
+
+        // Get vault params from map if available, otherwise fetch it
+        let vaultParams = vaultParamsMap?.get(orderbookAddress);
+        if (!vaultParams) {
+            vaultParams = await orderbook.getVaultParams({
+                from: ethers.constants.AddressZero,
+            });
+        }
 
         currentToken === ethers.constants.AddressZero
             ? nativeSend.push(true)
@@ -219,7 +230,7 @@ async function computeRouteInput(
     };
 }
 
-async function computeRouteOutput(
+export async function computeRouteOutput(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     route: Route,
     amountIn: number,
