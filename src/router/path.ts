@@ -19,9 +19,9 @@ export abstract class PathFinder {
 
         try {
             // Call the API to get the best route structure
-            const baseUrl = poolFetcher?.getBaseUrl() || process.env.API_BASE_URL;
+            const baseUrl = poolFetcher?.getBaseUrl();
             if (!baseUrl) {
-                throw new Error("No base URL available for API calls");
+                throw new Error("PoolFetcher must be initialized with a valid base URL");
             }
 
             const response = await fetch(`${baseUrl}/api/v2/routes/best`, {
