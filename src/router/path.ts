@@ -70,37 +70,36 @@ export abstract class PathFinder {
             }
         }
         if (estimatorContractAddress) {
-            const estimatorContract = new ethers.Contract(estimatorContractAddress, utilsAbi.abi, providerOrSigner);
-            const orderbookAddresses = bestRoute.route.path.map(pool => pool.orderbook);
-            const price = await estimatorContract.calculatePriceOverRoute(orderbookAddresses, bestRoute.isBuy);
-            const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
-            const actualPrice = parseFloat((amountIn / bestRoute.output).toFixed(18));
-            const priceImpact = ((100 * actualPrice / priceInUnits) - 100).toFixed(2);
-            bestRoute.priceImpact = parseFloat(priceImpact);
+            bestRoute.priceImpact = await calculatePriceImpact(
+                providerOrSigner, 
+                estimatorContractAddress, 
+                bestRoute, 
+                amountIn
+            );
         }
         return bestRoute;
     }
+}
 
-    static async calculatePriceImpact(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-        estimatorContractAddress: string,
-        route: RouteOutput,
-        amountIn: number
-    ): Promise<number> {
-        const estimatorContract = new ethers.Contract(
-            estimatorContractAddress,
-            utilsAbi.abi,
-            providerOrSigner
-        );
-        const orderbookAddresses = route.route.path.map(pool => pool.orderbook);
-        const price = await estimatorContract.calculatePriceOverRoute(
-            orderbookAddresses,
-            route.isBuy
-        );
-        const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
-        const actualPrice = parseFloat((amountIn / route.output).toFixed(18));
-        return parseFloat(((100 * actualPrice / priceInUnits) - 100).toFixed(2));
-    }
+async function calculatePriceImpact(
+    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    estimatorContractAddress: string,
+    route: RouteOutput,
+    amountIn: number
+): Promise<number> {
+    const estimatorContract = new ethers.Contract(
+        estimatorContractAddress,
+        utilsAbi.abi,
+        providerOrSigner
+    );
+    const orderbookAddresses = route.route.path.map(pool => pool.orderbook);
+    const price = await estimatorContract.calculatePriceOverRoute(
+        orderbookAddresses,
+        route.isBuy
+    );
+    const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
+    const actualPrice = parseFloat((amountIn / route.output).toFixed(18));
+    return parseFloat(((100 * actualPrice / priceInUnits) - 100).toFixed(2));
 }
 
 function computeAllRoutes(
