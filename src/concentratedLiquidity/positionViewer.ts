@@ -111,8 +111,11 @@ export abstract class PositionViewer {
             const quotePerTick = quoteLiquidity / numBids;
 
             for (const bid of bids) {
-                bid.liquidity =
-                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals);
+                bid.liquidity = this.normalizeBidSize(
+                    bid.price,
+                    sizePrecision,
+                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals),
+                );
                 if (bid.liquidity < minSize) {
                     throw new Error('bid liquidity is less than minSize');
                 }
@@ -191,8 +194,11 @@ export abstract class PositionViewer {
             let inferredQuoteLiquidity: bigint = BigInt(0);
 
             for (const bid of bids) {
-                bid.liquidity =
-                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals);
+                bid.liquidity = this.normalizeBidSize(
+                    bid.price,
+                    sizePrecision,
+                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals),
+                );
 
                 inferredQuoteLiquidity += quotePerTick; // one quotePerTick per bid
 
@@ -218,9 +224,12 @@ export abstract class PositionViewer {
             }
 
             for (const bid of bids) {
-                bid.liquidity =
+                bid.liquidity = this.normalizeBidSize(
+                    bid.price,
+                    sizePrecision,
                     (quoteLiquidity * sizePrecision * pricePrecision) /
-                    (numBids * bid.price * BigInt(10) ** quoteAssetDecimals);
+                        (numBids * bid.price * BigInt(10) ** quoteAssetDecimals),
+                );
                 if (bid.liquidity < minSize) {
                     throw new Error('bid liquidity is less than minSize');
                 }
@@ -346,8 +355,11 @@ export abstract class PositionViewer {
                 // Farthest bid (i=0) gets 1 unit; closest bid (i=numBids-1) gets numBids units.
                 const quoteMultiplier = BigInt(i + 1);
                 const quoteForThisBid = quoteUnitForBids * quoteMultiplier;
-                bid.liquidity =
-                    (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price);
+                bid.liquidity = this.normalizeBidSize(
+                    bid.price,
+                    sizePrecision,
+                    (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price),
+                );
                 if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
             }
 
@@ -417,9 +429,12 @@ export abstract class PositionViewer {
                     // Farthest bid (i=0) gets 1 unit, closest gets numBids units.
                     const quoteMultiplier = BigInt(i + 1);
                     const quoteForThisBid = quoteUnitForBids * quoteMultiplier;
-                    bid.liquidity =
+                    bid.liquidity = this.normalizeBidSize(
+                        bid.price,
+                        sizePrecision,
                         (quoteForThisBid * pricePrecision * sizePrecision) /
-                        (BigInt(10) ** quoteAssetDecimals * bid.price);
+                            (BigInt(10) ** quoteAssetDecimals * bid.price),
+                    );
                     if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
                 }
             }
@@ -554,8 +569,11 @@ export abstract class PositionViewer {
                 const quoteMultiplier = numBids - BigInt(i);
                 const quoteForThisBid = quoteUnitForBids * quoteMultiplier;
 
-                bid.liquidity =
-                    (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price);
+                bid.liquidity = this.normalizeBidSize(
+                    bid.price,
+                    sizePrecision,
+                    (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price),
+                );
                 if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
             }
 
@@ -633,9 +651,12 @@ export abstract class PositionViewer {
                     const quoteMultiplier = numBids - BigInt(i);
                     const quoteForThisBid = quoteUnitForBids * quoteMultiplier;
 
-                    bid.liquidity =
+                    bid.liquidity = this.normalizeBidSize(
+                        bid.price,
+                        sizePrecision,
                         (quoteForThisBid * pricePrecision * sizePrecision) /
-                        (BigInt(10) ** quoteAssetDecimals * bid.price);
+                            (BigInt(10) ** quoteAssetDecimals * bid.price),
+                    );
                     if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
                 }
             }
@@ -653,5 +674,43 @@ export abstract class PositionViewer {
             quoteLiquidity: quoteLiquidity ?? BigInt(0),
             baseLiquidity: baseLiquidity ?? BigInt(0),
         };
+    }
+
+    static normalizeBidSize(price: bigint, sizePrecision: bigint, bidSize: bigint): bigint {
+        if (this.mulDivUp(price, bidSize, sizePrecision) > (price * bidSize) / sizePrecision) {
+            return bidSize - this.mulDivUp(BigInt(1), sizePrecision, price);
+        }
+
+        return bidSize;
+    }
+
+    /**
+     * Performs multiplication followed by division with ceiling (rounding up).
+     * Equivalent to the Solidity mulDivUp function with overflow protection.
+     * @param x First multiplicand
+     * @param y Second multiplicand
+     * @param d Denominator
+     * @returns Result of (x * y) / d rounded up
+     */
+    static mulDivUp(x: bigint, y: bigint, d: bigint): bigint {
+        // Check for zero denominator
+        if (d === BigInt(0)) {
+            throw new Error('MulDivFailed: denominator is zero');
+        }
+
+        const z = x * y;
+
+        // Overflow check: equivalent to `require(d != 0 && (y == 0 || x <= type(uint256).max / y))`
+        // In JavaScript/TypeScript with BigInt, we need to check if the division gives us back the original value
+        if (y !== BigInt(0) && z / y !== x) {
+            throw new Error('MulDivFailed: multiplication overflow');
+        }
+
+        // Ceiling division: add 1 if there's a remainder
+        const remainder = z % d;
+        const quotient = z / d;
+
+        // If remainder is not zero, round up by adding 1
+        return remainder === BigInt(0) ? quotient : quotient + BigInt(1);
     }
 }
