@@ -154,7 +154,7 @@ export abstract class PositionViewer {
             // 1. Compute the scaled reciprocal sum Σ pricePrecision^2 / p_i
             // ------------------------------------------
             const reciprocalSumScaled = asks.reduce(
-                (sum, ask) => sum + (pricePrecision * pricePrecision) / ask.price,
+                (sum, ask) => sum + this.mulDivUp(pricePrecision, pricePrecision, ask.price),
                 BigInt(0),
             );
 
@@ -397,7 +397,7 @@ export abstract class PositionViewer {
             for (let i = 0; i < asks.length; i++) {
                 const ask = asks[i];
                 // Multiplier is (numAsks - i)
-                const ratio = ((numAsks - BigInt(i)) * farthestAskPrice * pricePrecision) / ask.price;
+                const ratio = this.mulDivUp((numAsks - BigInt(i)) * farthestAskPrice, pricePrecision, ask.price);
                 weightedSumOfBaseRatios += ratio;
             }
 
@@ -615,7 +615,7 @@ export abstract class PositionViewer {
             for (let i = 0; i < asks.length; i++) {
                 const ask = asks[i];
                 // Calculate term `i * (price_1 / price_i)`. Multiply by pricePrecision for integer math.
-                const ratio = (BigInt(i + 1) * closestAskPrice * pricePrecision) / ask.price;
+                const ratio = BigInt(i + 1) * this.mulDivUp(closestAskPrice, pricePrecision, ask.price);
                 weightedSumOfBaseRatios += ratio;
             }
 
