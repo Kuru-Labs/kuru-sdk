@@ -25,6 +25,7 @@ export abstract class PositionViewer {
      * @param tickSize - The size of a tick.
      * @param quoteLiquidity - The total quote liquidity in the market.
      * @param baseLiquidity - The total base liquidity in the market.
+     * @param maxPricePoints - The maximum number of price points to prevent infinite loop.
      * @returns A promise that resolves to the batch order details.
      */
     static async getSpotBatchLPDetails(
@@ -40,7 +41,30 @@ export abstract class PositionViewer {
         minSize: bigint,
         quoteLiquidity?: bigint, // In quote asset decimals
         baseLiquidity?: bigint, // In base asset decimals
+        maxPricePoints?: number, // max number price points to prevent infinite loop
     ): Promise<BatchLPDetails> {
+        if (maxPricePoints !== undefined) {
+            // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
+            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
+
+            let maxReachablePrice = startPrice;
+            let feeDenominatorPower = BigInt(1);
+            let feeNumeratorPower = BigInt(1);
+
+            // Calculate (FEE_DENOMINATOR + minFeesBps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
+            for (let i = 0; i < maxPricePoints; i++) {
+                feeNumeratorPower *= FEE_DENOMINATOR + minFeesBps;
+                feeDenominatorPower *= FEE_DENOMINATOR;
+            }
+
+            maxReachablePrice = (startPrice * feeNumeratorPower) / feeDenominatorPower;
+
+            if (maxReachablePrice <= endPrice) {
+                throw new Error(
+                    `maxPricePoints constraint violated: maximum reachable price (${maxReachablePrice}) would exceed or equal endPrice (${endPrice})`,
+                );
+            }
+        }
         // don't allow both quoteLiquidity and baseLiquidity to be undefined
         if (quoteLiquidity === undefined && baseLiquidity === undefined) {
             throw new Error('quoteLiquidity and baseLiquidity cannot be undefined');
@@ -259,6 +283,7 @@ export abstract class PositionViewer {
      * @param minSize - The minimum position size allowed.
      * @param quoteLiquidity - The total liquidity for one side of the curve, denominated in the quote asset.
      * @param baseLiquidity - The total liquidity for the asks side of the curve, denominated in the base asset.
+     * @param maxPricePoints - The maximum number of price points to prevent infinite loop.
      * @returns A promise resolving to an object with bid and ask positions and total liquidity.
      */
     static async getCurveBatchLPDetails(
@@ -274,7 +299,31 @@ export abstract class PositionViewer {
         minSize: bigint,
         quoteLiquidity?: bigint, // In quote asset decimals
         baseLiquidity?: bigint, // In base asset decimals
+        maxPricePoints?: number, // max number price points to prevent infinite loop
     ): Promise<BatchLPDetails> {
+        if (maxPricePoints !== undefined) {
+            // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
+            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
+
+            let maxReachablePrice = startPrice;
+            let feeDenominatorPower = BigInt(1);
+            let feeNumeratorPower = BigInt(1);
+
+            // Calculate (FEE_DENOMINATOR + minFeesBps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
+            for (let i = 0; i < maxPricePoints; i++) {
+                feeNumeratorPower *= FEE_DENOMINATOR + minFeesBps;
+                feeDenominatorPower *= FEE_DENOMINATOR;
+            }
+
+            maxReachablePrice = (startPrice * feeNumeratorPower) / feeDenominatorPower;
+
+            if (maxReachablePrice <= endPrice) {
+                throw new Error(
+                    `maxPricePoints constraint violated: maximum reachable price (${maxReachablePrice}) would exceed or equal endPrice (${endPrice})`,
+                );
+            }
+        }
+
         if (quoteLiquidity === undefined && baseLiquidity === undefined) {
             throw new Error('Either quoteLiquidity or baseLiquidity must be provided.');
         }
@@ -454,6 +503,7 @@ export abstract class PositionViewer {
      * @param minSize - The minimum position size allowed.
      * @param quoteLiquidity - The total liquidity for one side (e.g., asks), denominated in the quote asset.
      * @param baseLiquidity - The total liquidity for one side (e.g., asks), denominated in the base asset.
+     * @param maxPricePoints - The maximum number of price points to prevent infinite loop.
      * @returns A promise resolving to an object with bid and ask positions and total liquidity.
      */
     static async getBidAskBatchLPDetails(
@@ -469,7 +519,31 @@ export abstract class PositionViewer {
         minSize: bigint,
         quoteLiquidity?: bigint, // In quote asset decimals
         baseLiquidity?: bigint, // In base asset decimals
+        maxPricePoints?: number, // max number price points to prevent infinite loop
     ): Promise<BatchLPDetails> {
+        if (maxPricePoints !== undefined) {
+            // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
+            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
+
+            let maxReachablePrice = startPrice;
+            let feeDenominatorPower = BigInt(1);
+            let feeNumeratorPower = BigInt(1);
+
+            // Calculate (FEE_DENOMINATOR + minFeesBps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
+            for (let i = 0; i < maxPricePoints; i++) {
+                feeNumeratorPower *= FEE_DENOMINATOR + minFeesBps;
+                feeDenominatorPower *= FEE_DENOMINATOR;
+            }
+
+            maxReachablePrice = (startPrice * feeNumeratorPower) / feeDenominatorPower;
+
+            if (maxReachablePrice <= endPrice) {
+                throw new Error(
+                    `maxPricePoints constraint violated: maximum reachable price (${maxReachablePrice}) would exceed or equal endPrice (${endPrice})`,
+                );
+            }
+        }
+
         // Ensure that at least one form of liquidity is provided.
         if (quoteLiquidity === undefined && baseLiquidity === undefined) {
             throw new Error('Either quoteLiquidity or baseLiquidity must be provided.');
