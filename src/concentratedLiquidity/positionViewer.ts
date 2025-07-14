@@ -413,21 +413,27 @@ export abstract class PositionViewer {
             }
 
             // Distribute across asks: liquidity increases towards the center.
-            for (let i = 0; i < asks.length; i++) {
-                const ask = asks[i];
-                // CORRECTED: Closest ask (i=0) gets numAsks units; farthest ask (i=numAsks-1) gets 1 unit.
-                const quoteMultiplier = numAsks - BigInt(i);
-                const quoteForThisAsk = quoteUnitForAsks * quoteMultiplier;
-                ask.liquidity =
-                    (quoteForThisAsk * sizePrecision * pricePrecision) / (BigInt(10) ** quoteAssetDecimals * ask.price);
+            if (numAsks > 0) {
+                for (let i = 0; i < asks.length; i++) {
+                    const ask = asks[i];
+                    // CORRECTED: Closest ask (i=0) gets numAsks units; farthest ask (i=numAsks-1) gets 1 unit.
+                    const quoteMultiplier = numAsks - BigInt(i);
+                    const quoteForThisAsk = quoteUnitForAsks * quoteMultiplier;
+                    ask.liquidity =
+                        (quoteForThisAsk * sizePrecision * pricePrecision) /
+                        (BigInt(10) ** quoteAssetDecimals * ask.price);
 
-                // Accumulate the resulting base liquidity from asks.
-                totalBaseLiquidity +=
-                    (quoteForThisAsk * BigInt(10) ** baseAssetDecimals * pricePrecision) /
-                    (BigInt(10) ** quoteAssetDecimals * ask.price);
+                    // Accumulate the resulting base liquidity from asks.
+                    totalBaseLiquidity +=
+                        (quoteForThisAsk * BigInt(10) ** baseAssetDecimals * pricePrecision) /
+                        (BigInt(10) ** quoteAssetDecimals * ask.price);
 
-                if (ask.liquidity < minSize) throw new Error('Calculated ask liquidity is less than minSize.');
+                    if (ask.liquidity < minSize) throw new Error('Calculated ask liquidity is less than minSize.');
+                }
+            } else {
+                totalBaseLiquidity = BigInt(0);
             }
+
             baseLiquidity = totalBaseLiquidity;
         } else if (baseLiquidity !== undefined) {
             // Scenario B: Total Base Liquidity is provided (for asks).
@@ -486,7 +492,10 @@ export abstract class PositionViewer {
                     );
                     if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
                 }
+            } else {
+                totalQuoteLiquidity = BigInt(0);
             }
+
             quoteLiquidity = totalQuoteLiquidity;
         }
 
@@ -651,22 +660,27 @@ export abstract class PositionViewer {
                 if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
             }
 
-            // Distribute liquidity across asks.
-            for (let i = 0; i < asks.length; i++) {
-                const ask = asks[i];
-                // asks[0] is the closest, asks[numAsks-1] is the farthest.
-                // The closest ask gets 1 unit, the next gets 2, etc.
-                const quoteMultiplier = BigInt(i + 1);
-                const quoteForThisAsk = quoteUnitForAsks * quoteMultiplier;
+            if (numAsks > 0) {
+                // Distribute liquidity across asks.
+                for (let i = 0; i < asks.length; i++) {
+                    const ask = asks[i];
+                    // asks[0] is the closest, asks[numAsks-1] is the farthest.
+                    // The closest ask gets 1 unit, the next gets 2, etc.
+                    const quoteMultiplier = BigInt(i + 1);
+                    const quoteForThisAsk = quoteUnitForAsks * quoteMultiplier;
 
-                ask.liquidity =
-                    (quoteForThisAsk * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * ask.price);
-                if (ask.liquidity < minSize) throw new Error('Calculated ask liquidity is less than minSize.');
+                    ask.liquidity =
+                        (quoteForThisAsk * pricePrecision * sizePrecision) /
+                        (BigInt(10) ** quoteAssetDecimals * ask.price);
+                    if (ask.liquidity < minSize) throw new Error('Calculated ask liquidity is less than minSize.');
 
-                // We only need to calculate the resulting base liquidity from one side (asks).
-                totalBaseLiquidity +=
-                    (quoteForThisAsk * BigInt(10) ** baseAssetDecimals * pricePrecision) /
-                    (BigInt(10) ** quoteAssetDecimals * ask.price);
+                    // We only need to calculate the resulting base liquidity from one side (asks).
+                    totalBaseLiquidity +=
+                        (quoteForThisAsk * BigInt(10) ** baseAssetDecimals * pricePrecision) /
+                        (BigInt(10) ** quoteAssetDecimals * ask.price);
+                }
+            } else {
+                totalBaseLiquidity = BigInt(0);
             }
 
             baseLiquidity = totalBaseLiquidity;
@@ -733,6 +747,8 @@ export abstract class PositionViewer {
                     );
                     if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
                 }
+            } else {
+                totalQuoteLiquidity = BigInt(0);
             }
 
             quoteLiquidity = totalQuoteLiquidity;
