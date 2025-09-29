@@ -4,4 +4,5 @@ export * from './errorExtractor';
 export * from './math';
 export * from './slippage';
 export * from './txConfig';
+export { default as buildTransactionRequest } from './txConfig';
 export * from './unwrap';

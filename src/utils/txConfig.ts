@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { TransactionOptions } from 'src/types';
+import { TransactionOptions } from '../types';
 
 export default async function buildTransactionRequest({
     from,
