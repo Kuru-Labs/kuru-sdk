@@ -46,6 +46,9 @@ export default async function buildTransactionRequest({
         tx.gasLimit = gasLimit;
     }
 
+    const increasedGasLimit = ethers.BigNumber.from(gasLimit).mul(120).div(100);
+    tx.gasLimit = increasedGasLimit;
+
     if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
         if (txOptions?.priorityFee) {
             const priorityFeeWei = ethers.utils.parseUnits(txOptions.priorityFee.toString(), 'gwei');
