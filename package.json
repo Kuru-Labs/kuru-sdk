@@ -17,6 +17,8 @@
   "author": "Kuru Labs",
   "license": "ISC",
   "dependencies": {
+    "@types/axios": "^0.9.36",
+    "axios": "^1.10.0",
     "cross-fetch": "^4.0.0",
     "ethers": "5.7.1",
     "lint-staged": "^16.0.0"
