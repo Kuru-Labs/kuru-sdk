@@ -178,12 +178,13 @@ export class ActiveVault {
         vaultAddress: string,
         signer: ethers.Signer,
         shouldApprove: boolean = false,
+        context?: VaultContext,
     ): Promise<ContractReceipt> {
         const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, signer);
-        const ctx = await this.getVaultContext(vaultAddress, signer);
-        
+        const ctx = context ?? await this.getVaultContext(vaultAddress, signer);
+
         let overrides: ethers.PayableOverrides = {};
-        
+
         // Handle native token (ETH) deposits
         if (ctx.base === ethers.constants.AddressZero) {
             overrides.value = baseAmount;
@@ -191,14 +192,14 @@ export class ActiveVault {
             const tokenContract = new ethers.Contract(ctx.base, erc20Abi.abi, signer);
             await approveToken(tokenContract, vaultAddress, baseAmount, signer);
         }
-        
+
         if (ctx.quote === ethers.constants.AddressZero) {
             overrides.value = quoteAmount;
         } else if (shouldApprove) {
             const tokenContract = new ethers.Contract(ctx.quote, erc20Abi.abi, signer);
             await approveToken(tokenContract, vaultAddress, quoteAmount, signer);
         }
-        
+
         const tx = await vaultContract.deposit(baseAmount, quoteAmount, overrides);
         return await tx.wait();
     }
@@ -221,6 +222,68 @@ export class ActiveVault {
     }
 
     /**
+     * Deposit a single token into the active vault (automatically swaps to maintain ratio)
+     * @param totalAmount The total amount of the single token to deposit
+     * @param amountToSwap The amount to swap to the other token
+     * @param minOut The minimum amount expected from swap (slippage protection)
+     * @param isBaseAsset Whether depositing base asset (true) or quote asset (false)
+     * @param vaultAddress The address of the active vault contract
+     * @param signer The signer to use for the transaction
+     * @param shouldApprove Whether to approve tokens before depositing
+     * @param context Optional pre-fetched vault context
+     * @returns A promise that resolves to the transaction receipt
+     */
+    static async depositSingleSide(
+        totalAmount: BigNumber,
+        amountToSwap: BigNumber,
+        minOut: BigNumber,
+        isBaseAsset: boolean,
+        vaultAddress: string,
+        signer: ethers.Signer,
+        shouldApprove: boolean = false,
+        context?: VaultContext,
+    ): Promise<ContractReceipt> {
+        const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, signer);
+        const ctx = context ?? await this.getVaultContext(vaultAddress, signer);
+
+        let overrides: ethers.PayableOverrides = {};
+
+        // Handle native token (ETH) deposits
+        const depositToken = isBaseAsset ? ctx.base : ctx.quote;
+        
+        if (depositToken === ethers.constants.AddressZero) {
+            overrides.value = totalAmount;
+        } else if (shouldApprove) {
+            const tokenContract = new ethers.Contract(depositToken, erc20Abi.abi, signer);
+            await approveToken(tokenContract, vaultAddress, totalAmount, signer);
+        }
+
+        const tx = await vaultContract.depositSingleSide(totalAmount, amountToSwap, minOut, isBaseAsset, overrides);
+        return await tx.wait();
+    }
+
+    /**
+     * Withdraw shares from the active vault and receive a single token
+     * @param shares The number of shares to withdraw
+     * @param isBaseForSwap Whether to swap base to quote (true) or quote to base (false)
+     * @param minOut The minimum amount expected from final output (slippage protection)
+     * @param vaultAddress The address of the active vault contract
+     * @param signer The signer to use for the transaction
+     * @returns A promise that resolves to the transaction receipt
+     */
+    static async withdrawSingleSide(
+        shares: BigNumber,
+        isBaseForSwap: boolean,
+        minOut: BigNumber,
+        vaultAddress: string,
+        signer: ethers.Signer,
+    ): Promise<ContractReceipt> {
+        const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, signer);
+        const tx = await vaultContract.withdrawSingleSide(shares, isBaseForSwap, minOut);
+        return await tx.wait();
+    }
+
+    /**
      * Construct a deposit transaction without executing it
      * @param baseAmount The amount of base token to deposit
      * @param quoteAmount The amount of quote token to deposit
@@ -234,9 +297,10 @@ export class ActiveVault {
         quoteAmount: BigNumber,
         vaultAddress: string,
         signer: ethers.Signer,
+        context?: VaultContext,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
-        const ctx = await this.getVaultContext(vaultAddress, signer);
+        const ctx = context ?? await this.getVaultContext(vaultAddress, signer);
         const address = await signer.getAddress();
         
         const vaultInterface = new ethers.utils.Interface(activeVaultAbi.abi);
@@ -277,6 +341,91 @@ export class ActiveVault {
         const fromAddress = await signer.getAddress();
         
         const data = vaultInterface.encodeFunctionData('withdraw', [shares]);
+        
+        return buildTransactionRequest({
+            to: vaultAddress,
+            from: fromAddress,
+            data,
+            txOptions,
+            signer,
+        });
+    }
+
+    /**
+     * Construct a single-sided deposit transaction without executing it
+     * @param totalAmount The total amount of the single token to deposit
+     * @param amountToSwap The amount to swap to the other token
+     * @param minOut The minimum amount expected from swap (slippage protection)
+     * @param isBaseAsset Whether depositing base asset (true) or quote asset (false)
+     * @param vaultAddress The address of the active vault contract
+     * @param signer The signer to use for the transaction
+     * @param context Optional pre-fetched vault context
+     * @param txOptions Optional transaction options
+     * @returns A promise that resolves to the transaction request
+     */
+    static async constructDepositSingleSideTransaction(
+        totalAmount: BigNumber,
+        amountToSwap: BigNumber,
+        minOut: BigNumber,
+        isBaseAsset: boolean,
+        vaultAddress: string,
+        signer: ethers.Signer,
+        context?: VaultContext,
+        txOptions?: TransactionOptions,
+    ): Promise<ethers.providers.TransactionRequest> {
+        const ctx = context ?? await this.getVaultContext(vaultAddress, signer);
+        const address = await signer.getAddress();
+        
+        const vaultInterface = new ethers.utils.Interface(activeVaultAbi.abi);
+        const data = vaultInterface.encodeFunctionData('depositSingleSide', [
+            totalAmount,
+            amountToSwap,
+            minOut,
+            isBaseAsset,
+        ]);
+        
+        // Calculate the value for native token deposits
+        const depositToken = isBaseAsset ? ctx.base : ctx.quote;
+        const txValue = depositToken === ethers.constants.AddressZero
+            ? totalAmount
+            : BigNumber.from(0);
+        
+        return buildTransactionRequest({
+            to: vaultAddress,
+            from: address,
+            data,
+            value: txValue,
+            txOptions,
+            signer,
+        });
+    }
+
+    /**
+     * Construct a single-sided withdraw transaction without executing it
+     * @param shares The number of shares to withdraw
+     * @param isBaseForSwap Whether to swap base to quote (true) or quote to base (false)
+     * @param minOut The minimum amount expected from final output (slippage protection)
+     * @param vaultAddress The address of the active vault contract
+     * @param signer The signer to use for the transaction
+     * @param txOptions Optional transaction options
+     * @returns A promise that resolves to the transaction request
+     */
+    static async constructWithdrawSingleSideTransaction(
+        shares: BigNumber,
+        isBaseForSwap: boolean,
+        minOut: BigNumber,
+        vaultAddress: string,
+        signer: ethers.Signer,
+        txOptions?: TransactionOptions,
+    ): Promise<ethers.providers.TransactionRequest> {
+        const vaultInterface = new ethers.utils.Interface(activeVaultAbi.abi);
+        const fromAddress = await signer.getAddress();
+        
+        const data = vaultInterface.encodeFunctionData('withdrawSingleSide', [
+            shares,
+            isBaseForSwap,
+            minOut,
+        ]);
         
         return buildTransactionRequest({
             to: vaultAddress,

@@ -17,12 +17,13 @@ export abstract class Vault {
         ammVaultAddress: string,
         amount1: BigNumber,
         amount2: BigNumber,
-        expectedAmount2: BigNumber,
         receiver: string,
+        expectedAmount2?: BigNumber,
     ): Promise<ContractReceipt> {
+        const expected = expectedAmount2 ?? amount2.mul(9970).div(10000); // 30 BPS default slippage
         const vaultContract = new ethers.Contract(ammVaultAddress, vaultAbi.abi, providerOrSigner);
 
-        const tx = await vaultContract.deposit(amount1, amount2, expectedAmount2, receiver);
+        const tx = await vaultContract.deposit(amount1, amount2, expected, receiver);
 
         return tx.wait();
     }
@@ -274,13 +275,14 @@ export abstract class Vault {
     static async depositWithAmounts(
         amount1: BigNumber,
         amount2: BigNumber,
-        expectedAmount2: BigNumber,
         baseAssetAddress: string,
         quoteAssetAddress: string,
         vaultAddress: string,
         signer: ethers.Signer,
         shouldApprove: boolean = false,
+        expectedAmount2?: BigNumber,
     ): Promise<ContractReceipt> {
+        const expected = expectedAmount2 ?? amount2.mul(9970).div(10000); // 30 BPS default slippage
         const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
 
         let overrides: ethers.PayableOverrides = {};
@@ -299,24 +301,24 @@ export abstract class Vault {
             await approveToken(tokenContract, vaultAddress, amount2, signer);
         }
 
-        const tx = await vaultContract.deposit(amount1, amount2, expectedAmount2, await signer.getAddress(), overrides);
+        const tx = await vaultContract.deposit(amount1, amount2, expected, await signer.getAddress(), overrides);
         return await tx.wait();
     }
 
     static async constructDepositTransaction(
         amount1: BigNumber,
         amount2: BigNumber,
-        expectedAmount2: BigNumber,
         baseAssetAddress: string,
         quoteAssetAddress: string,
         vaultAddress: string,
         signer: ethers.Signer,
+        expectedAmount2?: BigNumber,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
-
+        const expected = expectedAmount2 ?? amount2.mul(9970).div(10000); // 30 BPS default slippage
         const vaultInterface = new ethers.utils.Interface(vaultAbi.abi);
-        const data = vaultInterface.encodeFunctionData('deposit', [amount1, amount2, expectedAmount2, address]);
+        const data = vaultInterface.encodeFunctionData('deposit', [amount1, amount2, expected, address]);
 
         // Calculate the total value for native token deposits
         const txValue =
