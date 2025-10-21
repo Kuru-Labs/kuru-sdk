@@ -17,11 +17,12 @@ export abstract class Vault {
         ammVaultAddress: string,
         amount1: BigNumber,
         amount2: BigNumber,
+        expectedAmount2: BigNumber,
         receiver: string,
     ): Promise<ContractReceipt> {
         const vaultContract = new ethers.Contract(ammVaultAddress, vaultAbi.abi, providerOrSigner);
 
-        const tx = await vaultContract.deposit(amount1, amount2, receiver);
+        const tx = await vaultContract.deposit(amount1, amount2, expectedAmount2, receiver);
 
         return tx.wait();
     }
@@ -273,6 +274,7 @@ export abstract class Vault {
     static async depositWithAmounts(
         amount1: BigNumber,
         amount2: BigNumber,
+        expectedAmount2: BigNumber,
         baseAssetAddress: string,
         quoteAssetAddress: string,
         vaultAddress: string,
@@ -297,13 +299,14 @@ export abstract class Vault {
             await approveToken(tokenContract, vaultAddress, amount2, signer);
         }
 
-        const tx = await vaultContract.deposit(amount1, amount2, await signer.getAddress(), overrides);
+        const tx = await vaultContract.deposit(amount1, amount2, expectedAmount2, await signer.getAddress(), overrides);
         return await tx.wait();
     }
 
     static async constructDepositTransaction(
         amount1: BigNumber,
         amount2: BigNumber,
+        expectedAmount2: BigNumber,
         baseAssetAddress: string,
         quoteAssetAddress: string,
         vaultAddress: string,
@@ -313,7 +316,7 @@ export abstract class Vault {
         const address = await signer.getAddress();
 
         const vaultInterface = new ethers.utils.Interface(vaultAbi.abi);
-        const data = vaultInterface.encodeFunctionData('deposit', [amount1, amount2, address]);
+        const data = vaultInterface.encodeFunctionData('deposit', [amount1, amount2, expectedAmount2, address]);
 
         // Calculate the total value for native token deposits
         const txValue =
