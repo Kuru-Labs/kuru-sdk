@@ -35,6 +35,7 @@ export class MonadDeployer {
         deployerAddress: string,
         tokenParams: TokenParams,
         marketParams: PoolParams,
+        metadata?: any,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
@@ -44,7 +45,15 @@ export class MonadDeployer {
         const kuruCollectiveFee = await deployer.kuruCollectiveFee();
 
         const deployerInterface = new ethers.utils.Interface(monadDeployerAbi.abi);
-        const data = deployerInterface.encodeFunctionData('deployTokenAndMarket', [tokenParams, marketParams]);
+
+        // Convert metadata to bytes if provided
+        const metadataBytes = metadata ? ethers.utils.toUtf8Bytes(JSON.stringify(metadata)) : '0x';
+
+        const data = deployerInterface.encodeFunctionData('deployTokenAndMarket', [
+            tokenParams,
+            marketParams,
+            metadataBytes,
+        ]);
 
         return buildTransactionRequest({
             from: address,
@@ -61,6 +70,7 @@ export class MonadDeployer {
         deployerAddress: string,
         tokenParams: TokenParams,
         marketParams: PoolParams,
+        metadata?: any,
         txOptions?: TransactionOptions,
     ): Promise<{ tokenAddress: string; marketAddress: string; hash: string }> {
         const deployer = new ethers.Contract(deployerAddress, monadDeployerAbi.abi, signer);
@@ -71,6 +81,7 @@ export class MonadDeployer {
                 deployerAddress,
                 tokenParams,
                 marketParams,
+                metadata,
                 txOptions,
             );
 
