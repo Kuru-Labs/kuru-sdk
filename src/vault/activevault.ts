@@ -2,8 +2,10 @@
 import { BigNumber, ContractReceipt, ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { TransactionOptions } from 'src/types';
+import { TransactionOptions, MarketParams } from 'src/types';
 import { approveToken } from '../utils';
+import { CostEstimator } from '../market/estimator';
+import { ParamFetcher } from '../market/marketParams';
 import activeVaultAbi from '../../abi/ActiveVault.json';
 import erc20Abi from '../../abi/IERC20.json';
 import buildTransactionRequest from '../utils/txConfig';
@@ -33,7 +35,7 @@ export class ActiveVault {
     ): Promise<VaultContext> {
         const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, providerOrSigner);
         const ctx = await vaultContract.ctx();
-        
+
         return {
             book: ctx.book,
             pricePrecision: ctx.pricePrecision,
@@ -59,7 +61,7 @@ export class ActiveVault {
     ): Promise<{ baseNotional: BigNumber; quoteNotional: BigNumber }> {
         const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, providerOrSigner);
         const [baseNotional, quoteNotional] = await vaultContract.calculateNotionalValue();
-        
+
         return { baseNotional, quoteNotional };
     }
 
@@ -76,12 +78,12 @@ export class ActiveVault {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<BigNumber> {
         const { baseNotional, quoteNotional } = await this.getNotionalValues(vaultAddress, providerOrSigner);
-        
+
         // If vault is empty, return 0
         if (baseNotional.isZero() || quoteNotional.isZero()) {
             return BigNumber.from(0);
         }
-        
+
         // Calculate quote amount maintaining the current ratio
         // quoteAmount = (baseAmount * quoteNotional) / baseNotional
         return baseAmount.mul(quoteNotional).div(baseNotional);
@@ -100,12 +102,12 @@ export class ActiveVault {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<BigNumber> {
         const { baseNotional, quoteNotional } = await this.getNotionalValues(vaultAddress, providerOrSigner);
-        
+
         // If vault is empty, return 0
         if (baseNotional.isZero() || quoteNotional.isZero()) {
             return BigNumber.from(0);
         }
-        
+
         // Calculate base amount maintaining the current ratio
         // baseAmount = (quoteAmount * baseNotional) / quoteNotional
         return quoteAmount.mul(baseNotional).div(quoteNotional);
@@ -143,7 +145,7 @@ export class ActiveVault {
     ): Promise<{ baseAmount: BigNumber; quoteAmount: BigNumber }> {
         const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, providerOrSigner);
         const [baseAmount, quoteAmount] = await vaultContract.previewWithdrawInAmounts(shares);
-        
+
         return { baseAmount, quoteAmount };
     }
 
@@ -181,7 +183,7 @@ export class ActiveVault {
         context?: VaultContext,
     ): Promise<ContractReceipt> {
         const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, signer);
-        const ctx = context ?? await this.getVaultContext(vaultAddress, signer);
+        const ctx = context ?? (await this.getVaultContext(vaultAddress, signer));
 
         let overrides: ethers.PayableOverrides = {};
 
@@ -211,11 +213,7 @@ export class ActiveVault {
      * @param signer The signer to use for the transaction
      * @returns A promise that resolves to the transaction receipt
      */
-    static async withdraw(
-        shares: BigNumber,
-        vaultAddress: string,
-        signer: ethers.Signer,
-    ): Promise<ContractReceipt> {
+    static async withdraw(shares: BigNumber, vaultAddress: string, signer: ethers.Signer): Promise<ContractReceipt> {
         const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, signer);
         const tx = await vaultContract.withdraw(shares);
         return await tx.wait();
@@ -244,13 +242,13 @@ export class ActiveVault {
         context?: VaultContext,
     ): Promise<ContractReceipt> {
         const vaultContract = new ethers.Contract(vaultAddress, activeVaultAbi.abi, signer);
-        const ctx = context ?? await this.getVaultContext(vaultAddress, signer);
+        const ctx = context ?? (await this.getVaultContext(vaultAddress, signer));
 
         let overrides: ethers.PayableOverrides = {};
 
         // Handle native token (ETH) deposits
         const depositToken = isBaseAsset ? ctx.base : ctx.quote;
-        
+
         if (depositToken === ethers.constants.AddressZero) {
             overrides.value = totalAmount;
         } else if (shouldApprove) {
@@ -260,6 +258,39 @@ export class ActiveVault {
 
         const tx = await vaultContract.depositSingleSide(totalAmount, amountToSwap, minOut, isBaseAsset, overrides);
         return await tx.wait();
+    }
+
+    static async estimateDepositSingleSide(
+        isBaseForSwap: boolean,
+        totalAmount: BigNumber,
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        vaultAddress: string,
+        context?: VaultContext,
+        marketParams?: MarketParams,
+    ): Promise<[BigNumber, BigNumber]> {
+        const ctx = context ?? (await this.getVaultContext(vaultAddress, providerOrSigner));
+        const { book } = ctx;
+        const mp = marketParams ?? (await ParamFetcher.getMarketParams(providerOrSigner, book));
+        const amountToSwap = totalAmount.div(2);
+        const size = isBaseForSwap
+            ? amountToSwap.mul(mp.sizePrecision).div(ethers.utils.parseUnits('1', mp.baseAssetDecimals))
+            : amountToSwap.mul(mp.pricePrecision).div(ethers.utils.parseUnits('1', mp.quoteAssetDecimals));
+        console.log('size:', size.toString());
+        const { output } = isBaseForSwap
+            ? await CostEstimator.returnMarketSellEstimate(providerOrSigner, book, size)
+            : await CostEstimator.returnMarketBuyEstimate(providerOrSigner, book, size);
+        const impliedPrice = isBaseForSwap
+            ? output
+                  .mul(ethers.utils.parseEther('1'))
+                  .mul(ethers.utils.parseUnits('1', mp.baseAssetDecimals))
+                  .div(amountToSwap)
+                  .div(ethers.utils.parseUnits('1', mp.quoteAssetDecimals))
+            : amountToSwap
+                  .mul(ethers.utils.parseEther('1'))
+                  .mul(ethers.utils.parseUnits('1', mp.baseAssetDecimals))
+                  .div(output)
+                  .div(ethers.utils.parseUnits('1', mp.quoteAssetDecimals));
+        return [impliedPrice, output];
     }
 
     /**
@@ -283,6 +314,39 @@ export class ActiveVault {
         return await tx.wait();
     }
 
+    static async estimateWithdrawSingleSide(
+        isBaseForSwap: boolean,
+        shares: BigNumber,
+        vaultAddress: string,
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        context?: VaultContext,
+        marketParams?: MarketParams,
+    ): Promise<[BigNumber, BigNumber]> {
+        const ctx = context ?? (await this.getVaultContext(vaultAddress, providerOrSigner));
+        const { book } = ctx;
+        const mp = marketParams ?? (await ParamFetcher.getMarketParams(providerOrSigner, book));
+        const { baseAmount, quoteAmount } = await ActiveVault.previewWithdraw(shares, vaultAddress, providerOrSigner);
+        const size = isBaseForSwap
+            ? baseAmount.mul(mp.sizePrecision).div(ethers.utils.parseUnits('1', mp.baseAssetDecimals))
+            : quoteAmount.mul(mp.pricePrecision).div(ethers.utils.parseUnits('1', mp.quoteAssetDecimals));
+        const { output } = isBaseForSwap
+            ? await CostEstimator.returnMarketSellEstimate(providerOrSigner, book, size)
+            : await CostEstimator.returnMarketBuyEstimate(providerOrSigner, book, size);
+        const totalOutput = output.add(isBaseForSwap ? quoteAmount : baseAmount);
+        const impliedPrice = isBaseForSwap
+            ? output
+                  .mul(ethers.utils.parseEther('1'))
+                  .mul(ethers.utils.parseUnits('1', mp.baseAssetDecimals))
+                  .div(baseAmount)
+                  .div(ethers.utils.parseUnits('1', mp.quoteAssetDecimals))
+            : quoteAmount
+                  .mul(ethers.utils.parseEther('1'))
+                  .mul(ethers.utils.parseUnits('1', mp.baseAssetDecimals))
+                  .div(output)
+                  .div(ethers.utils.parseUnits('1', mp.quoteAssetDecimals));
+        return [impliedPrice, totalOutput];
+    }
+
     /**
      * Construct a deposit transaction without executing it
      * @param baseAmount The amount of base token to deposit
@@ -300,19 +364,20 @@ export class ActiveVault {
         context?: VaultContext,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
-        const ctx = context ?? await this.getVaultContext(vaultAddress, signer);
+        const ctx = context ?? (await this.getVaultContext(vaultAddress, signer));
         const address = await signer.getAddress();
-        
+
         const vaultInterface = new ethers.utils.Interface(activeVaultAbi.abi);
         const data = vaultInterface.encodeFunctionData('deposit', [baseAmount, quoteAmount]);
-        
+
         // Calculate the value for native token deposits
-        const txValue = ctx.base === ethers.constants.AddressZero
-            ? baseAmount
-            : ctx.quote === ethers.constants.AddressZero
-              ? quoteAmount
-              : BigNumber.from(0);
-        
+        const txValue =
+            ctx.base === ethers.constants.AddressZero
+                ? baseAmount
+                : ctx.quote === ethers.constants.AddressZero
+                  ? quoteAmount
+                  : BigNumber.from(0);
+
         return buildTransactionRequest({
             to: vaultAddress,
             from: address,
@@ -339,9 +404,9 @@ export class ActiveVault {
     ): Promise<ethers.providers.TransactionRequest> {
         const vaultInterface = new ethers.utils.Interface(activeVaultAbi.abi);
         const fromAddress = await signer.getAddress();
-        
+
         const data = vaultInterface.encodeFunctionData('withdraw', [shares]);
-        
+
         return buildTransactionRequest({
             to: vaultAddress,
             from: fromAddress,
@@ -373,9 +438,9 @@ export class ActiveVault {
         context?: VaultContext,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
-        const ctx = context ?? await this.getVaultContext(vaultAddress, signer);
+        const ctx = context ?? (await this.getVaultContext(vaultAddress, signer));
         const address = await signer.getAddress();
-        
+
         const vaultInterface = new ethers.utils.Interface(activeVaultAbi.abi);
         const data = vaultInterface.encodeFunctionData('depositSingleSide', [
             totalAmount,
@@ -383,13 +448,11 @@ export class ActiveVault {
             minOut,
             isBaseAsset,
         ]);
-        
+
         // Calculate the value for native token deposits
         const depositToken = isBaseAsset ? ctx.base : ctx.quote;
-        const txValue = depositToken === ethers.constants.AddressZero
-            ? totalAmount
-            : BigNumber.from(0);
-        
+        const txValue = depositToken === ethers.constants.AddressZero ? totalAmount : BigNumber.from(0);
+
         return buildTransactionRequest({
             to: vaultAddress,
             from: address,
@@ -420,13 +483,9 @@ export class ActiveVault {
     ): Promise<ethers.providers.TransactionRequest> {
         const vaultInterface = new ethers.utils.Interface(activeVaultAbi.abi);
         const fromAddress = await signer.getAddress();
-        
-        const data = vaultInterface.encodeFunctionData('withdrawSingleSide', [
-            shares,
-            isBaseForSwap,
-            minOut,
-        ]);
-        
+
+        const data = vaultInterface.encodeFunctionData('withdrawSingleSide', [shares, isBaseForSwap, minOut]);
+
         return buildTransactionRequest({
             to: vaultAddress,
             from: fromAddress,
