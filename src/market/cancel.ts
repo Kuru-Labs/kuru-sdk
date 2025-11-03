@@ -1,9 +1,9 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from 'ethers';
+import { BigNumber, ContractReceipt, ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { extractErrorMessage } from '../utils';
 import { TransactionOptions } from '../types';
+import { extractErrorMessage } from '../utils';
 
 // ============ Config Imports ============
 import orderbookAbi from '../../abi/OrderBook.json';
@@ -53,16 +53,16 @@ export abstract class OrderCanceler {
         txOptions?: TransactionOptions,
     ): Promise<ContractReceipt> {
         try {
-            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+            const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
 
             const tx = await OrderCanceler.constructCancelOrdersTransaction(
-                orderbook.signer,
+                signer,
                 orderbookAddress,
                 orderIds,
                 txOptions,
             );
 
-            const transaction = await orderbook.signer.sendTransaction(tx);
+            const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
 
             return receipt;

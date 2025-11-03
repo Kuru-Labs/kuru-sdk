@@ -1,9 +1,9 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from 'ethers';
+import { BigNumber, ContractReceipt, ethers } from 'ethers';
 
 // ============ Internal Imports ============
+import { LIMIT, MarketParams, TransactionOptions } from '../types';
 import { clipToDecimals, extractErrorMessage, log10BigNumber } from '../utils';
-import { MarketParams, LIMIT, TransactionOptions } from '../types';
 
 // ============ Config Imports ============
 import orderbookAbi from '../../abi/OrderBook.json';
@@ -26,6 +26,7 @@ export abstract class GTC {
         order: LIMIT,
     ): Promise<ContractReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
 
         const clippedPrice = clipToDecimals(order.price, log10BigNumber(marketParams.pricePrecision));
         const clippedSize = clipToDecimals(order.size, log10BigNumber(marketParams.sizePrecision));
@@ -34,8 +35,8 @@ export abstract class GTC {
         const sizeBn: BigNumber = ethers.utils.parseUnits(clippedSize, log10BigNumber(marketParams.sizePrecision));
 
         return order.isBuy
-            ? GTC.addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions)
-            : GTC.addSellOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions);
+            ? GTC.addBuyOrder(signer, orderbook, priceBn, sizeBn, order.postOnly, order.txOptions)
+            : GTC.addSellOrder(signer, orderbook, priceBn, sizeBn, order.postOnly, order.txOptions);
     }
 
     static async estimateGas(
@@ -125,6 +126,7 @@ export abstract class GTC {
      * @dev Places a buy limit order on the order book.
      */
     static async addBuyOrder(
+        signer: ethers.Signer,
         orderbook: ethers.Contract,
         price: BigNumber,
         size: BigNumber,
@@ -133,7 +135,7 @@ export abstract class GTC {
     ): Promise<ContractReceipt> {
         try {
             const tx = await GTC.constructBuyOrderTransaction(
-                orderbook.signer,
+                signer,
                 orderbook.address,
                 price,
                 size,
@@ -141,7 +143,7 @@ export abstract class GTC {
                 txOptions,
             );
 
-            const transaction = await orderbook.signer.sendTransaction(tx);
+            const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
 
             return receipt;
@@ -158,6 +160,7 @@ export abstract class GTC {
      * @dev Places a sell limit order on the order book.
      */
     static async addSellOrder(
+        signer: ethers.Signer,
         orderbook: ethers.Contract,
         price: BigNumber,
         size: BigNumber,
@@ -166,7 +169,7 @@ export abstract class GTC {
     ): Promise<ContractReceipt> {
         try {
             const tx = await GTC.constructSellOrderTransaction(
-                orderbook.signer,
+                signer,
                 orderbook.address,
                 price,
                 size,
@@ -174,7 +177,7 @@ export abstract class GTC {
                 txOptions,
             );
 
-            const transaction = await orderbook.signer.sendTransaction(tx);
+            const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
 
             return receipt;
