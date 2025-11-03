@@ -1,12 +1,12 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 
 // Add TransactionOptions type import
 import { TransactionOptions } from '../types';
 
 // ============ Internal Imports ============
-import { extractErrorMessage } from '../utils';
 import erc20Abi from '../../abi/IERC20.json';
+import { extractErrorMessage } from '../utils';
 import buildTransactionRequest from './txConfig';
 
 const getOwnerAddress = async (providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer): Promise<string> => {
@@ -67,20 +67,15 @@ export async function approveToken(
     try {
         const ownerAddress = await getOwnerAddress(providerOrSigner);
         const existingApproval = await tokenContract.allowance(ownerAddress, approveTo);
+        const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
 
         if (existingApproval.gte(size)) {
             console.log('Approval already exists');
             return null;
         }
 
-        const tx = await constructApproveTransaction(
-            tokenContract.signer,
-            tokenContract.address,
-            approveTo,
-            size,
-            txOptions,
-        );
-        const transaction = await tokenContract.signer.sendTransaction(tx);
+        const tx = await constructApproveTransaction(signer, tokenContract.address, approveTo, size, txOptions);
+        const transaction = await signer.sendTransaction(tx);
 
         if (!waitForReceipt) {
             return transaction.hash;

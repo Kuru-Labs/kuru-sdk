@@ -2,8 +2,8 @@
 import { BigNumber, ContractReceipt, ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { extractErrorMessage, approveToken, estimateApproveGas } from '../utils';
 import { TransactionOptions } from 'src/types';
+import { approveToken, estimateApproveGas, extractErrorMessage } from '../utils';
 
 // ============ Config Imports ============
 import erc20Abi from '../../abi/IERC20.json';
@@ -23,6 +23,7 @@ export abstract class MarginDeposit {
     ): Promise<ContractReceipt> {
         try {
             const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
+            const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
 
             if (approveTokens && tokenAddress !== ethers.constants.AddressZero) {
                 await approveToken(
@@ -34,7 +35,7 @@ export abstract class MarginDeposit {
             }
             const formattedAmount = ethers.utils.parseUnits(amount, decimals);
             const tx = await MarginDeposit.constructDepositTransaction(
-                tokenContract.signer,
+                signer,
                 marginAccountAddress,
                 userAddress,
                 tokenAddress,
@@ -42,7 +43,6 @@ export abstract class MarginDeposit {
                 txOptions,
             );
 
-            const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
             const transaction = await signer.sendTransaction(tx);
             return await transaction.wait();
         } catch (e: any) {
