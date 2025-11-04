@@ -128,7 +128,7 @@ export abstract class Vault {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
         const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        const [amount1, amount2] = await vaultContract.previewRedeem(shares, {
+        const [amount1, amount2] = await vaultContract.previewWithdraw(shares, {
             from: ethers.constants.AddressZero,
         });
         return { amount1, amount2 };
