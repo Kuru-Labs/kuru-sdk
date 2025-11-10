@@ -58,5 +58,14 @@
     "UniV3CallbackInvalidSource": "f0cbbb4b",
     "UniV3CallbackMissed": "6d09f943",
     "UniV3CallbackNegativeAmount": "24292634",
-    "ZeroRouterBalance": "1e2ce7e0"
+    "ZeroRouterBalance": "1e2ce7e0",
+    "InvalidLength": "539ef336",
+    "InvalidInput": "4a44fdcf",
+    "NativeAssetMismatch": "bee49019",
+    "SharesMintedZero": "47c227ee",
+    "SharesBurnedZero": "1a1d10c6",
+    "NativeTransferFailed": "39668309",
+    "WithdrawalExceedsRestingBalance": "d6a178f4",
+    "GasCrankCooldown": "34888b66",
+    "GasCrankWithdrawExceedsMax": "ae22b8fc"
 }
