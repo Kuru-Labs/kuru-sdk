@@ -106,6 +106,9 @@ export abstract class PositionProvider {
         const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
 
         for (const [tokenAddress, { amount }] of Object.entries(assetsDeposit)) {
+            if (tokenAddress === ethers.constants.AddressZero) {
+                continue;
+            }
             const balanceSlot = PositionProvider.computeBalanceSlot(marginAccountAddress, tokenAddress);
             const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
 
