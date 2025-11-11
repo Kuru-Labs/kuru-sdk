@@ -1,4 +1,4 @@
-import { ethers, ContractReceipt } from 'ethers';
+import { ethers, ContractReceipt, BigNumber } from 'ethers';
 import { BatchLPDetails } from './positionViewer';
 import { TransactionOptions } from '../types';
 import orderbookAbi from '../../abi/OrderBook.json';
@@ -19,27 +19,7 @@ export abstract class PositionProvider {
     ): Promise<ContractReceipt> {
         // Create contract instance
         const contract = new ethers.Contract(contractAddress, orderbookAbi.abi, signer);
-
-        const prices: bigint[] = [];
-        const flipPrices: bigint[] = [];
-        const sizes: bigint[] = [];
-        const isBuy: boolean[] = [];
-
-        // Add bids
-        for (const bid of batchDetails.bids) {
-            prices.push(bid.price);
-            flipPrices.push(bid.flipPrice);
-            sizes.push(bid.liquidity);
-            isBuy.push(true);
-        }
-
-        // Add asks
-        for (const ask of batchDetails.asks) {
-            prices.push(ask.price);
-            flipPrices.push(ask.flipPrice);
-            sizes.push(ask.liquidity);
-            isBuy.push(false);
-        }
+        const { prices, flipPrices, sizes, isBuy } = PositionProvider.buildBatchInputs(batchDetails);
 
         // Call the contract with provisionOrRevert = false
         const tx = await contract.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, false);
@@ -61,30 +41,58 @@ export abstract class PositionProvider {
         signer: ethers.Signer,
         contractAddress: string,
         batchDetails: BatchLPDetails,
+        marginAccountAddress: string,
+        assetsDeposit: Record<string, { amount: BigNumber; decimal: number }>,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
-        const prices: bigint[] = [];
-        const flipPrices: bigint[] = [];
-        const sizes: bigint[] = [];
-        const isBuy: boolean[] = [];
+        const { gasLimit, data } = await PositionProvider.estimateGas(
+            signer,
+            contractAddress,
+            batchDetails,
+            marginAccountAddress,
+            assetsDeposit,
+        );
 
-        // Add bids
-        for (const bid of batchDetails.bids) {
-            prices.push(bid.price);
-            flipPrices.push(bid.flipPrice);
-            sizes.push(bid.liquidity);
-            isBuy.push(true);
+        const mergedTxOptions = txOptions && txOptions.gasLimit !== undefined ? txOptions : { ...txOptions, gasLimit };
+
+        return buildTransactionRequest({
+            from: address,
+            to: contractAddress,
+            signer,
+            data,
+            txOptions: mergedTxOptions,
+        });
+    }
+
+    static computeAccountKey(owner: string, token: string): string {
+        return ethers.utils.keccak256(ethers.utils.solidityPack(['address', 'address'], [owner, token]));
+    }
+
+    static computeBalanceSlot(owner: string, token: string): string {
+        const accountKey = this.computeAccountKey(owner, token);
+        const slotBytes = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.constants.One), 32);
+        return ethers.utils.keccak256(
+            ethers.utils.concat([ethers.utils.arrayify(accountKey), ethers.utils.arrayify(slotBytes)]),
+        );
+    }
+
+    static async estimateGas(
+        signer: ethers.Signer,
+        contractAddress: string,
+        batchDetails: BatchLPDetails,
+        marginAccountAddress: string,
+        assetsDeposit: Record<string, { amount: BigNumber; decimal: number }>,
+    ): Promise<{ gasLimit: BigNumber; data: string }> {
+        const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
+
+        if (!provider) {
+            throw new Error('Signer must be connected to a provider to estimate gas.');
         }
 
-        // Add asks
-        for (const ask of batchDetails.asks) {
-            prices.push(ask.price);
-            flipPrices.push(ask.flipPrice);
-            sizes.push(ask.liquidity);
-            isBuy.push(false);
-        }
+        const from = await signer.getAddress();
+        const { prices, flipPrices, sizes, isBuy } = PositionProvider.buildBatchInputs(batchDetails);
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('batchProvisionLiquidity', [
@@ -95,12 +103,60 @@ export abstract class PositionProvider {
             false,
         ]);
 
-        return buildTransactionRequest({
-            from: address,
-            to: contractAddress,
-            signer,
-            data,
-            txOptions,
-        });
+        const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
+
+        for (const [tokenAddress, { amount }] of Object.entries(assetsDeposit)) {
+            const balanceSlot = PositionProvider.computeBalanceSlot(marginAccountAddress, tokenAddress);
+            const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
+
+            stateOverrides[tokenAddress] = {
+                storage: {
+                    ...(stateOverrides[tokenAddress]?.storage ?? {}),
+                    [balanceSlot]: paddedAmount,
+                },
+            };
+        }
+
+        if (Object.keys(stateOverrides).length === 0) {
+            throw new Error('assetsDeposit must contain at least one token to estimate gas with overrides.');
+        }
+
+        const estimatedGasHex = await provider.send('eth_estimateGas', [
+            {
+                from,
+                to: contractAddress,
+                data,
+            },
+            'latest',
+            stateOverrides,
+        ]);
+        const estimatedGas = BigNumber.from(estimatedGasHex);
+        const bufferedGas = estimatedGas.mul(120).div(100);
+        console.log('estimated gas limit', bufferedGas);
+
+        return { gasLimit: bufferedGas, data };
+    }
+
+    private static buildBatchInputs(batchDetails: BatchLPDetails) {
+        const prices: bigint[] = [];
+        const flipPrices: bigint[] = [];
+        const sizes: bigint[] = [];
+        const isBuy: boolean[] = [];
+
+        for (const bid of batchDetails.bids) {
+            prices.push(bid.price);
+            flipPrices.push(bid.flipPrice);
+            sizes.push(bid.liquidity);
+            isBuy.push(true);
+        }
+
+        for (const ask of batchDetails.asks) {
+            prices.push(ask.price);
+            flipPrices.push(ask.flipPrice);
+            sizes.push(ask.liquidity);
+            isBuy.push(false);
+        }
+
+        return { prices, flipPrices, sizes, isBuy };
     }
 }
