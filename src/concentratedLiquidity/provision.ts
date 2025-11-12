@@ -158,7 +158,7 @@ export abstract class PositionProvider {
         ]);
         const estimatedGas = BigNumber.from(estimatedGasHex);
         const bufferedGas = estimatedGas.mul(120).div(100);
-        console.log('estimated gas limit', bufferedGas);
+        // console.log('estimated gas limit', bufferedGas);
 
         return { gasLimit: bufferedGas, data };
     }
