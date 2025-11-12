@@ -58,6 +58,30 @@ export abstract class GTC {
     }
 
     /**
+     * @dev Computes the storage key used by ERC-20 contracts for a user's balance mapping.
+     * @param owner - The address whose balance slot should be derived.
+     * @param token - The token contract address.
+     * @returns Keccak hash representing the account key inside the ERC-20 `balances` mapping.
+     */
+    static computeAccountKey(owner: string, token: string): string {
+        return ethers.utils.keccak256(ethers.utils.solidityPack(['address', 'address'], [owner, token]));
+    }
+
+    /**
+     * @dev Calculates the full storage slot for an ERC-20 `balanceOf(owner)` entry.
+     * @param owner - The address whose balance slot is needed.
+     * @param token - The token contract address.
+     * @returns Storage slot (keccak hash) for the `balanceOf(owner)` inside the token contract.
+     */
+    static computeBalanceSlot(owner: string, token: string): string {
+        const accountKey = this.computeAccountKey(owner, token);
+        const slotBytes = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.constants.One), 32);
+        return ethers.utils.keccak256(
+            ethers.utils.concat([ethers.utils.arrayify(accountKey), ethers.utils.arrayify(slotBytes)]),
+        );
+    }
+
+    /**
      * @dev Constructs a transaction for a buy limit order.
      * @param signer - The signer instance.
      * @param orderbookAddress - The address of the order book contract.
@@ -73,18 +97,66 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
+        marginAccountAddress?: string,
+        tokenAddress?: string,
+        amount?: BigNumber,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
+        const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
+        if (!provider) {
+            throw new Error('Signer must be connected to a provider to estimate gas.');
+        }
+        let mergedTxOptions: TransactionOptions | undefined;
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('addBuyOrder', [price, size, postOnly]);
+
+        if (marginAccountAddress && tokenAddress && amount) {
+            // do estimateGas with state overrides
+            const balanceSlot = this.computeBalanceSlot(marginAccountAddress, tokenAddress);
+            const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
+
+            const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
+            stateOverrides[tokenAddress] = {
+                storage: {
+                    [balanceSlot]: paddedAmount,
+                },
+            };
+            const estimatedGasHex = await provider.send('eth_estimateGas', [
+                {
+                    from: address,
+                    to: orderbookAddress,
+                    data,
+                },
+                'latest',
+                stateOverrides,
+            ]);
+            const estimatedGas = BigNumber.from(estimatedGasHex);
+            const bufferedGas = estimatedGas.mul(120).div(100);
+            mergedTxOptions =
+                txOptions && txOptions.gasLimit !== undefined ? txOptions : { ...txOptions, gasLimit: bufferedGas };
+        } else {
+            // do estimateGas without state overrides
+            const estimatedGasHex = await provider.send('eth_estimateGas', [
+                {
+                    from: address,
+                    to: orderbookAddress,
+                    data,
+                },
+                'latest',
+            ]);
+            const estimatedGas = BigNumber.from(estimatedGasHex);
+            const bufferedGas = estimatedGas.mul(120).div(100);
+            mergedTxOptions =
+                txOptions && txOptions.gasLimit !== undefined ? txOptions : { ...txOptions, gasLimit: bufferedGas };
+        }
 
         return buildTransactionRequest({
             to: orderbookAddress,
             from: address,
             data,
-            txOptions,
+            txOptions: mergedTxOptions,
             signer,
         });
     }
@@ -105,12 +177,60 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
+        marginAccountAddress?: string,
+        tokenAddress?: string,
+        amount?: BigNumber,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
+        const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
+        if (!provider) {
+            throw new Error('Signer must be connected to a provider to estimate gas.');
+        }
+        let mergedTxOptions: TransactionOptions | undefined;
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('addSellOrder', [price, size, postOnly]);
+
+        if (marginAccountAddress && tokenAddress && amount) {
+            // do estimateGas with state overrides
+            const balanceSlot = this.computeBalanceSlot(marginAccountAddress, tokenAddress);
+            const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
+
+            const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
+            stateOverrides[tokenAddress] = {
+                storage: {
+                    [balanceSlot]: paddedAmount,
+                },
+            };
+            const estimatedGasHex = await provider.send('eth_estimateGas', [
+                {
+                    from: address,
+                    to: orderbookAddress,
+                    data,
+                },
+                'latest',
+                stateOverrides,
+            ]);
+            const estimatedGas = BigNumber.from(estimatedGasHex);
+            const bufferedGas = estimatedGas.mul(120).div(100);
+            mergedTxOptions =
+                txOptions && txOptions.gasLimit !== undefined ? txOptions : { ...txOptions, gasLimit: bufferedGas };
+        } else {
+            // do estimateGas without state overrides
+            const estimatedGasHex = await provider.send('eth_estimateGas', [
+                {
+                    from: address,
+                    to: orderbookAddress,
+                    data,
+                },
+                'latest',
+            ]);
+            const estimatedGas = BigNumber.from(estimatedGasHex);
+            const bufferedGas = estimatedGas.mul(120).div(100);
+            mergedTxOptions =
+                txOptions && txOptions.gasLimit !== undefined ? txOptions : { ...txOptions, gasLimit: bufferedGas };
+        }
 
         return buildTransactionRequest({
             to: orderbookAddress,
@@ -138,6 +258,9 @@ export abstract class GTC {
                 price,
                 size,
                 postOnly,
+                undefined,
+                undefined,
+                undefined,
                 txOptions,
             );
 
@@ -171,6 +294,9 @@ export abstract class GTC {
                 price,
                 size,
                 postOnly,
+                undefined,
+                undefined,
+                undefined,
                 txOptions,
             );
 

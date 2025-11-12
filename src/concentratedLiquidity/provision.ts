@@ -34,6 +34,8 @@ export abstract class PositionProvider {
      * @param signer - The signer instance
      * @param contractAddress - The contract address
      * @param batchDetails - The batch liquidity position details
+     * @param marginAccountAddress - The margin account address
+     * @param assetsDeposit - Mapping of token address to simulated deposit amount/decimals
      * @param txOptions - Transaction options
      * @returns A promise that resolves to the transaction request object
      */
@@ -66,10 +68,22 @@ export abstract class PositionProvider {
         });
     }
 
+    /**
+     * @dev Computes the storage key inside an ERC-20 balance mapping for the given owner/token pair.
+     * @param owner Address whose balance slot should be derived.
+     * @param token Token contract address whose balance mapping we are targeting.
+     * @returns Keccak hash representing the intermediate account key within the ERC-20 `balances` mapping.
+     */
     static computeAccountKey(owner: string, token: string): string {
         return ethers.utils.keccak256(ethers.utils.solidityPack(['address', 'address'], [owner, token]));
     }
 
+    /**
+     * @dev Derives the full storage slot for `balanceOf(owner)` of a token contract.
+     * @param owner Address whose balance slot is required.
+     * @param token Token contract address whose `balanceOf` storage slot is computed.
+     * @returns Storage slot (keccak hash) that points to the owner's balance within the ERC-20 contract.
+     */
     static computeBalanceSlot(owner: string, token: string): string {
         const accountKey = this.computeAccountKey(owner, token);
         const slotBytes = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.constants.One), 32);
@@ -78,6 +92,15 @@ export abstract class PositionProvider {
         );
     }
 
+    /**
+     * @dev Encodes `batchProvisionLiquidity` and estimates gas, optionally applying margin-account state overrides.
+     * @param signer Signer used to perform the estimation request.
+     * @param contractAddress Target order book contract that receives the call.
+     * @param batchDetails Liquidity batch to be provisioned (bids/asks and totals).
+     * @param marginAccountAddress Margin account whose balances are overridden for simulation.
+     * @param assetsDeposit Mapping of token address to simulated deposit amount/decimals (only ERC-20 tokens supported).
+     * @returns Buffered gas limit and the encoded calldata so callers can reuse both when constructing the transaction.
+     */
     static async estimateGas(
         signer: ethers.Signer,
         contractAddress: string,
@@ -140,6 +163,11 @@ export abstract class PositionProvider {
         return { gasLimit: bufferedGas, data };
     }
 
+    /**
+     * @dev Flattens `BatchLPDetails` into the arrays expected by the on-chain contract.
+     * @param batchDetails Structured liquidity batch containing bids/asks.
+     * @returns Object of flattened arrays (`prices`, `flipPrices`, `sizes`, `isBuy`) ready for ABI encoding.
+     */
     private static buildBatchInputs(batchDetails: BatchLPDetails) {
         const prices: bigint[] = [];
         const flipPrices: bigint[] = [];
