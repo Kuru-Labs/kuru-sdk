@@ -236,7 +236,7 @@ export abstract class GTC {
             to: orderbookAddress,
             from: address,
             data,
-            txOptions,
+            txOptions: mergedTxOptions,
             signer,
         });
     }
