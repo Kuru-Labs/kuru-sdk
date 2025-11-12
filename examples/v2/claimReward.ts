@@ -19,7 +19,7 @@ async function main() {
     console.log('Contract Address:', rewardVaultAddress);
 
     // ============ Get Nonce ============
-    const nonce = await RewardVault.GetNonce(rewardVaultAddress, userAddress, provider);
+    const nonce = await RewardVault.getNonce(rewardVaultAddress, userAddress, provider);
     console.log('Current Nonce:', nonce);
 
     const nextNonce = (BigInt(nonce) + BigInt(1)).toString();
@@ -48,7 +48,7 @@ async function main() {
     console.log(`Claiming ${rewards.length} rewards...`);
 
     try {
-        const receipt = await RewardVault.ClaimMultipleRewards(rewardVaultAddress, rewards, signatures, userWallet);
+        const receipt = await RewardVault.claimMultipleRewards(rewardVaultAddress, rewards, signatures, userWallet);
 
         console.log('\n✅ Rewards claimed successfully!');
         console.log('Transaction Hash:', receipt.transactionHash);

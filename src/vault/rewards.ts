@@ -29,7 +29,7 @@ export class RewardVault {
      * @param signer The signer to use for the transaction
      * @returns The transaction receipt
      */
-    static async ClaimMultipleRewards(
+    static async claimMultipleRewards(
         claimContractAddress: string,
         rewards: Reward[],
         signatures: string[],
@@ -49,7 +49,7 @@ export class RewardVault {
      * @param txOptions The transaction options
      * @returns The transaction request
      */
-    static async ConstructClaimMultipleRewardsTransaction(
+    static async constructClaimMultipleRewardsTransaction(
         claimContractAddress: string,
         rewards: Reward[],
         signatures: string[],
@@ -78,7 +78,7 @@ export class RewardVault {
      * @param signer The signer (must be the authorized reward signer)
      * @returns The signature as a hex string
      */
-    static async SignReward(
+    static async signReward(
         reward: Reward,
         contractAddress: string,
         chainId: number,
@@ -127,7 +127,7 @@ export class RewardVault {
      * @param signer The signer (must be the authorized reward signer)
      * @returns Array of signatures as hex strings
      */
-    static async SignRewards(
+    static async signRewards(
         rewards: Reward[],
         contractAddress: string,
         chainId: number,
@@ -136,7 +136,7 @@ export class RewardVault {
         const signatures: string[] = [];
 
         for (const reward of rewards) {
-            const signature = await this.SignReward(reward, contractAddress, chainId, signer);
+            const signature = await this.signReward(reward, contractAddress, chainId, signer);
             signatures.push(signature);
         }
 
@@ -150,7 +150,7 @@ export class RewardVault {
      * @param provider The provider to use for the call
      * @returns The current nonce
      */
-    static async GetNonce(
+    static async getNonce(
         contractAddress: string,
         recipient: string,
         provider: ethers.providers.Provider,

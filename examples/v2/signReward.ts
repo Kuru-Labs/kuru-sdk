@@ -25,7 +25,7 @@ async function main() {
     const recipientAddress = userAddress;
 
     // Get the current nonce for the recipient
-    const currentNonce = await RewardVault.GetNonce(rewardVaultAddress, recipientAddress, provider);
+    const currentNonce = await RewardVault.getNonce(rewardVaultAddress, recipientAddress, provider);
     console.log('Current Nonce:', currentNonce);
 
     // Next nonce should be currentNonce + 1
@@ -49,7 +49,7 @@ async function main() {
     console.log('  Nonce:', nativeReward.nonce);
 
     // Sign the reward
-    const signature = await RewardVault.SignReward(nativeReward, rewardVaultAddress, chainId, rewardSignerWallet);
+    const signature = await RewardVault.signReward(nativeReward, rewardVaultAddress, chainId, rewardSignerWallet);
 
     console.log('\nSignature:', signature);
 
