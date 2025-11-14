@@ -97,10 +97,10 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
+        txOptions?: TransactionOptions,
         marginAccountAddress?: string,
         tokenAddress?: string,
         amount?: BigNumber,
-        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
         const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
@@ -136,6 +136,10 @@ export abstract class GTC {
             const bufferedGas = estimatedGas.mul(120).div(100);
             mergedTxOptions =
                 txOptions && txOptions.gasLimit !== undefined ? txOptions : { ...txOptions, gasLimit: bufferedGas };
+        } else if ((!marginAccountAddress || !tokenAddress || !amount) && txOptions?.gasLimit !== undefined) {
+            // don't do estimateGas (backwards compatibility)
+            mergedTxOptions = txOptions;
+            // do estimateGas with state overrides
         } else {
             // do estimateGas without state overrides
             const estimatedGasHex = await provider.send('eth_estimateGas', [
@@ -177,10 +181,10 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
+        txOptions?: TransactionOptions,
         marginAccountAddress?: string,
         tokenAddress?: string,
         amount?: BigNumber,
-        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
         const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
@@ -216,6 +220,10 @@ export abstract class GTC {
             const bufferedGas = estimatedGas.mul(120).div(100);
             mergedTxOptions =
                 txOptions && txOptions.gasLimit !== undefined ? txOptions : { ...txOptions, gasLimit: bufferedGas };
+        } else if ((!marginAccountAddress || !tokenAddress || !amount) && txOptions?.gasLimit !== undefined) {
+            // don't do estimateGas (backwards compatibility)
+            mergedTxOptions = txOptions;
+            // do estimateGas with state overrides
         } else {
             // do estimateGas without state overrides
             const estimatedGasHex = await provider.send('eth_estimateGas', [
@@ -258,10 +266,10 @@ export abstract class GTC {
                 price,
                 size,
                 postOnly,
-                undefined,
-                undefined,
-                undefined,
                 txOptions,
+                undefined,
+                undefined,
+                undefined,
             );
 
             const transaction = await orderbook.signer.sendTransaction(tx);
@@ -294,10 +302,10 @@ export abstract class GTC {
                 price,
                 size,
                 postOnly,
-                undefined,
-                undefined,
-                undefined,
                 txOptions,
+                undefined,
+                undefined,
+                undefined,
             );
 
             const transaction = await orderbook.signer.sendTransaction(tx);

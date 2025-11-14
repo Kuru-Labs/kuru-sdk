@@ -43,11 +43,33 @@ export abstract class PositionProvider {
         signer: ethers.Signer,
         contractAddress: string,
         batchDetails: BatchLPDetails,
-        marginAccountAddress: string,
-        assetsDeposit: Record<string, { amount: BigNumber; decimal: number }>,
         txOptions?: TransactionOptions,
+        marginAccountAddress?: string,
+        assetsDeposit?: Record<string, { amount: BigNumber; decimal: number }>,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
+
+        if (!marginAccountAddress || !assetsDeposit) {
+            // no state overrides; rely on provided txOptions.gasLimit
+            const { prices, flipPrices, sizes, isBuy } = PositionProvider.buildBatchInputs(batchDetails);
+
+            const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+            const data = orderbookInterface.encodeFunctionData('batchProvisionLiquidity', [
+                prices,
+                flipPrices,
+                sizes,
+                isBuy,
+                false,
+            ]);
+
+            return buildTransactionRequest({
+                from: address,
+                to: contractAddress,
+                signer,
+                data,
+                txOptions,
+            });
+        }
 
         const { gasLimit, data } = await PositionProvider.estimateGas(
             signer,
