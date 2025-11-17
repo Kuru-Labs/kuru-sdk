@@ -90,7 +90,7 @@ export abstract class MarginWithdraw {
         const address = await signer.getAddress();
         const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
 
-        const data = marginAccountInterface.encodeFunctionData('batchClaimMaxTokens', [tokens]);
+        const data = marginAccountInterface.encodeFunctionData('batchWithdrawMaxTokens', [tokens]);
 
         return buildTransactionRequest({
             to: marginAccountAddress,
