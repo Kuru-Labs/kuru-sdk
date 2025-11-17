@@ -72,15 +72,12 @@ export abstract class PositionViewer {
 
         startPrice = startPrice - (startPrice % tickSize);
 
-        var numBids: bigint = BigInt(0);
-        var numAsks: bigint = BigInt(0);
         const bids: Position[] = [];
         const asks: Position[] = [];
 
         const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
 
         while (startPrice < maxPrice) {
-            numBids++;
             var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
             if (nextPrice == startPrice) {
                 nextPrice = startPrice + tickSize;
@@ -103,32 +100,30 @@ export abstract class PositionViewer {
         }
 
         while (startPrice < endPrice) {
-            numAsks++;
-            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            if (nextPrice == startPrice) {
-                nextPrice = startPrice + tickSize;
-            }
-            nextPrice = nextPrice - (nextPrice % tickSize);
-
             var flipPrice = (startPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
             if (flipPrice == startPrice) {
                 flipPrice = startPrice - tickSize;
             }
             flipPrice = flipPrice - (flipPrice % tickSize);
 
-            // Prevent asks from exceeding the specified endPrice
-            if (nextPrice > endPrice) {
-                break;
-            }
             const position = {
-                price: nextPrice,
+                price: startPrice,
                 liquidity: BigInt(0),
                 flipPrice,
             };
             asks.push(position);
 
+            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            if (nextPrice == startPrice) {
+                nextPrice = startPrice + tickSize;
+            }
+            nextPrice = nextPrice - (nextPrice % tickSize);
+
             startPrice = nextPrice;
         }
+
+        const numBids = BigInt(bids.length);
+        const numAsks = BigInt(asks.length);
 
         if (quoteLiquidity !== undefined && baseLiquidity == undefined) {
             baseLiquidity = BigInt(0);
@@ -364,22 +359,18 @@ export abstract class PositionViewer {
         }
 
         while (currentPrice < endPrice) {
+            var flipPrice = (currentPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
+            if (flipPrice == currentPrice) {
+                flipPrice = currentPrice - tickSize;
+            }
+            flipPrice = flipPrice - (flipPrice % tickSize);
+
+            asks.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
+
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
 
-            // Prevent asks from exceeding endPrice
-            if (nextPrice > endPrice) {
-                break;
-            }
-
-            var flipPrice = (startPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
-            if (flipPrice == startPrice) {
-                flipPrice = startPrice - tickSize;
-            }
-            flipPrice = flipPrice - (flipPrice % tickSize);
-
-            asks.push({ price: nextPrice, liquidity: BigInt(0), flipPrice });
             currentPrice = nextPrice;
         }
 
@@ -604,22 +595,18 @@ export abstract class PositionViewer {
 
         // Asks are created from the center outwards to the farthest price (endPrice).
         while (currentPrice < endPrice) {
+            var flipPrice = (currentPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
+            if (flipPrice == currentPrice) {
+                flipPrice = currentPrice - tickSize;
+            }
+            flipPrice = flipPrice - (flipPrice % tickSize);
+
+            asks.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
+
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
 
-            // Prevent asks from exceeding endPrice
-            if (nextPrice > endPrice) {
-                break;
-            }
-
-            var flipPrice = (startPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
-            if (flipPrice == startPrice) {
-                flipPrice = startPrice - tickSize;
-            }
-            flipPrice = flipPrice - (flipPrice % tickSize);
-
-            asks.push({ price: nextPrice, liquidity: BigInt(0), flipPrice });
             currentPrice = nextPrice;
         }
 
