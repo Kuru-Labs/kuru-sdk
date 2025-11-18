@@ -16,6 +16,41 @@ const FEE_DENOMINATOR = BigInt(10000);
 
 export abstract class PositionViewer {
     /**
+     * @dev Retrieves the first ask price for a given price range.
+     * @param minFeesBps - The minimum fees to filter positions by.
+     * @param startPrice - The lower bound of the price range to query.
+     * @param endPrice - The upper bound of the price range to query.
+     * @param bestAskPrice - The current market price.
+     * @param tickSize - The size of a tick.
+     * @returns A promise that resolves to the first ask price. If no ask price is found, returns 0.
+     */
+    static async getFirstAskPrice(
+        minFeesBps: bigint,
+        startPrice: bigint,
+        endPrice: bigint,
+        bestAskPrice: bigint,
+        tickSize: bigint,
+    ): Promise<bigint> {
+        if (endPrice < bestAskPrice) {
+            return BigInt(0);
+        }
+
+        startPrice = startPrice - (startPrice % tickSize);
+
+        while (startPrice < bestAskPrice) {
+            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            nextPrice = nextPrice - (nextPrice % tickSize);
+            if (nextPrice == startPrice) {
+                nextPrice = startPrice + tickSize;
+            }
+
+            startPrice = nextPrice;
+        }
+
+        return startPrice;
+    }
+
+    /**
      * @dev Retrieves details for concentrated liquidity positions within a price range.
      * @param minFeesBps - The minimum fees to filter positions by.
      * @param startPrice - The lower bound of the price range to query.
