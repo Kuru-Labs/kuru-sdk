@@ -79,15 +79,15 @@ export abstract class PositionViewer {
 
         while (startPrice < maxPrice) {
             var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice == startPrice) {
                 nextPrice = startPrice + tickSize;
             }
-            nextPrice = nextPrice - (nextPrice % tickSize);
             var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            flipPrice = flipPrice - (flipPrice % tickSize);
             if (flipPrice == nextPrice) {
                 flipPrice = nextPrice + tickSize;
             }
-            flipPrice = flipPrice - (flipPrice % tickSize);
 
             const position = {
                 price: startPrice,
@@ -100,7 +100,9 @@ export abstract class PositionViewer {
         }
 
         while (startPrice < endPrice) {
-            var flipPrice = (startPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
+            var flipPrice =
+                (startPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
+                (FEE_DENOMINATOR * FEE_DENOMINATOR);
             if (flipPrice == startPrice) {
                 flipPrice = startPrice - tickSize;
             }
@@ -114,10 +116,10 @@ export abstract class PositionViewer {
             asks.push(position);
 
             var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice == startPrice) {
                 nextPrice = startPrice + tickSize;
             }
-            nextPrice = nextPrice - (nextPrice % tickSize);
 
             startPrice = nextPrice;
         }
@@ -345,21 +347,23 @@ export abstract class PositionViewer {
         // #############################################################
         while (currentPrice < maxPrice) {
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
+            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
 
             var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            flipPrice = flipPrice - (flipPrice % tickSize);
             if (flipPrice == nextPrice) {
                 flipPrice = nextPrice + tickSize;
             }
-            flipPrice = flipPrice - (flipPrice % tickSize);
 
             bids.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
             currentPrice = nextPrice;
         }
 
         while (currentPrice < endPrice) {
-            var flipPrice = (currentPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
+            var flipPrice =
+                (currentPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
+                (FEE_DENOMINATOR * FEE_DENOMINATOR);
             if (flipPrice == currentPrice) {
                 flipPrice = currentPrice - tickSize;
             }
@@ -368,8 +372,8 @@ export abstract class PositionViewer {
             asks.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
 
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
+            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
 
             currentPrice = nextPrice;
         }
@@ -580,14 +584,14 @@ export abstract class PositionViewer {
         // Bids are created from the farthest price (startPrice) inwards to the center.
         while (currentPrice < maxPrice) {
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
+            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
 
             var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            flipPrice = flipPrice - (flipPrice % tickSize);
             if (flipPrice == nextPrice) {
                 flipPrice = nextPrice + tickSize;
             }
-            flipPrice = flipPrice - (flipPrice % tickSize);
 
             bids.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
             currentPrice = nextPrice;
@@ -595,7 +599,9 @@ export abstract class PositionViewer {
 
         // Asks are created from the center outwards to the farthest price (endPrice).
         while (currentPrice < endPrice) {
-            var flipPrice = (currentPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
+            var flipPrice =
+                (currentPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
+                (FEE_DENOMINATOR * FEE_DENOMINATOR);
             if (flipPrice == currentPrice) {
                 flipPrice = currentPrice - tickSize;
             }
@@ -604,8 +610,8 @@ export abstract class PositionViewer {
             asks.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
 
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
+            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
 
             currentPrice = nextPrice;
         }
