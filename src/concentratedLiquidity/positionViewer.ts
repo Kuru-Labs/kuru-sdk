@@ -1,15 +1,23 @@
+import { LPSummary, getLPSummaryForMinSize } from './lpSummary';
+
 // ============ Types ============
 export interface BatchLPDetails {
     bids: Position[];
     asks: Position[];
     quoteLiquidity: bigint;
     baseLiquidity: bigint;
+    minSizeError: boolean;
 }
 
 export interface Position {
     price: bigint;
     flipPrice: bigint;
     liquidity: bigint;
+}
+
+export interface BatchLPResult {
+    batchLPDetails: BatchLPDetails;
+    lpSummary: LPSummary;
 }
 
 const FEE_DENOMINATOR = BigInt(10000);
@@ -61,7 +69,7 @@ export abstract class PositionViewer {
      * @param quoteLiquidity - The total quote liquidity in the market.
      * @param baseLiquidity - The total base liquidity in the market.
      * @param maxPricePoints - The maximum number of price points to prevent infinite loop.
-     * @returns A promise that resolves to the batch order details.
+     * @returns A promise that resolves to the batch order details and LP summary.
      */
     static async getSpotBatchLPDetails(
         minFeesBps: bigint,
@@ -77,7 +85,7 @@ export abstract class PositionViewer {
         quoteLiquidity?: bigint, // In quote asset decimals
         baseLiquidity?: bigint, // In base asset decimals
         maxPricePoints?: number, // max number price points to prevent infinite loop
-    ): Promise<BatchLPDetails> {
+    ): Promise<BatchLPResult> {
         if (maxPricePoints !== undefined) {
             // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
             // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
@@ -162,18 +170,17 @@ export abstract class PositionViewer {
         const numBids = BigInt(bids.length);
         const numAsks = BigInt(asks.length);
 
+        let minSizeError = false;
         if (quoteLiquidity !== undefined && baseLiquidity == undefined) {
             baseLiquidity = BigInt(0);
             const quotePerTick = quoteLiquidity / numBids;
 
             for (const bid of bids) {
-                bid.liquidity = this.normalizeBidSize(
-                    bid.price,
-                    sizePrecision,
-                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals),
-                );
-                if (bid.liquidity < minSize) {
-                    throw new Error('bid liquidity is less than minSize');
+                const bidSize =
+                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals);
+                bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
+                if (bidSize < minSize) {
+                    minSizeError = true;
                 }
             }
 
@@ -182,16 +189,19 @@ export abstract class PositionViewer {
                     (quotePerTick * sizePrecision * pricePrecision) / (ask.price * BigInt(10) ** quoteAssetDecimals);
                 baseLiquidity += (ask.liquidity * BigInt(10) ** baseAssetDecimals) / sizePrecision;
                 if (ask.liquidity < minSize) {
-                    throw new Error('ask liquidity is less than minSize');
+                    minSizeError = true;
                 }
             }
 
-            return {
+            const batchLPDetails = {
                 bids: bids.sort((a, b) => Number(b.price - a.price)),
                 asks: asks.sort((a, b) => Number(b.price - a.price)),
                 quoteLiquidity: quoteLiquidity ?? BigInt(0),
                 baseLiquidity: baseLiquidity ?? BigInt(0),
+                minSizeError: minSizeError,
             };
+            const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+            return { batchLPDetails, lpSummary };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity == undefined) {
@@ -229,7 +239,7 @@ export abstract class PositionViewer {
                     (reciprocalSumScaled * ask.price * BigInt(10) ** baseAssetDecimals);
 
                 if (ask.liquidity < minSize) {
-                    throw new Error('ask liquidity is less than minSize');
+                    minSizeError = true;
                 }
             }
 
@@ -250,61 +260,66 @@ export abstract class PositionViewer {
             let inferredQuoteLiquidity: bigint = BigInt(0);
 
             for (const bid of bids) {
-                bid.liquidity = this.normalizeBidSize(
-                    bid.price,
-                    sizePrecision,
-                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals),
-                );
+                const bidSize =
+                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals);
+                bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
 
                 inferredQuoteLiquidity += quotePerTick; // one quotePerTick per bid
 
-                if (bid.liquidity < minSize) {
-                    throw new Error('bid liquidity is less than minSize');
+                if (bidSize < minSize) {
+                    minSizeError = true;
                 }
             }
 
-            return {
+            const batchLPDetails = {
                 bids: bids.sort((a, b) => Number(b.price - a.price)),
                 asks: asks.sort((a, b) => Number(b.price - a.price)),
                 quoteLiquidity: inferredQuoteLiquidity,
                 baseLiquidity: baseLiquidity,
+                minSizeError: minSizeError,
             };
+            const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+            return { batchLPDetails, lpSummary };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity !== undefined) {
             for (const ask of asks) {
                 ask.liquidity = (baseLiquidity * sizePrecision) / (numAsks * BigInt(10) ** baseAssetDecimals);
                 if (ask.liquidity < minSize) {
-                    throw new Error('ask liquidity is less than minSize');
+                    minSizeError = true;
                 }
             }
 
             for (const bid of bids) {
-                bid.liquidity = this.normalizeBidSize(
-                    bid.price,
-                    sizePrecision,
+                const bidSize =
                     (quoteLiquidity * sizePrecision * pricePrecision) /
-                        (numBids * bid.price * BigInt(10) ** quoteAssetDecimals),
-                );
-                if (bid.liquidity < minSize) {
-                    throw new Error('bid liquidity is less than minSize');
+                    (numBids * bid.price * BigInt(10) ** quoteAssetDecimals);
+                bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
+                if (bidSize < minSize) {
+                    minSizeError = true;
                 }
             }
 
-            return {
+            const batchLPDetails = {
                 bids: bids.sort((a, b) => Number(b.price - a.price)),
                 asks: asks.sort((a, b) => Number(b.price - a.price)),
                 quoteLiquidity: quoteLiquidity ?? BigInt(0),
                 baseLiquidity: baseLiquidity ?? BigInt(0),
+                minSizeError: minSizeError,
             };
+            const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+            return { batchLPDetails, lpSummary };
         }
 
-        return {
+        const batchLPDetails = {
             bids: [],
             asks: [],
             quoteLiquidity: BigInt(0),
             baseLiquidity: BigInt(0),
+            minSizeError: minSizeError,
         };
+        const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+        return { batchLPDetails, lpSummary };
     }
 
     /**
@@ -325,7 +340,7 @@ export abstract class PositionViewer {
      * @param quoteLiquidity - The total liquidity for one side of the curve, denominated in the quote asset.
      * @param baseLiquidity - The total liquidity for the asks side of the curve, denominated in the base asset.
      * @param maxPricePoints - The maximum number of price points to prevent infinite loop.
-     * @returns A promise resolving to an object with bid and ask positions and total liquidity.
+     * @returns A promise resolving to an object with bid and ask positions, total liquidity, and LP summary.
      */
     static async getCurveBatchLPDetails(
         minFeesBps: bigint,
@@ -341,7 +356,7 @@ export abstract class PositionViewer {
         quoteLiquidity?: bigint, // In quote asset decimals
         baseLiquidity?: bigint, // In base asset decimals
         maxPricePoints?: number, // max number price points to prevent infinite loop
-    ): Promise<BatchLPDetails> {
+    ): Promise<BatchLPResult> {
         if (maxPricePoints !== undefined) {
             // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
             // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
@@ -419,7 +434,7 @@ export abstract class PositionViewer {
         // #############################################################
         // # 2. Distribute Liquidity
         // #############################################################
-
+        let minSizeError = false;
         if (quoteLiquidity !== undefined) {
             // Scenario A: Total Quote Liquidity is provided.
             const quoteUnitForBids =
@@ -434,12 +449,10 @@ export abstract class PositionViewer {
                 // Farthest bid (i=0) gets 1 unit; closest bid (i=numBids-1) gets numBids units.
                 const quoteMultiplier = BigInt(i + 1);
                 const quoteForThisBid = quoteUnitForBids * quoteMultiplier;
-                bid.liquidity = this.normalizeBidSize(
-                    bid.price,
-                    sizePrecision,
-                    (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price),
-                );
-                if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
+                const bidSize =
+                    (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price);
+                bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
+                if (bidSize < minSize) minSizeError = true;
             }
 
             // Distribute across asks: liquidity increases towards the center.
@@ -458,7 +471,7 @@ export abstract class PositionViewer {
                         (quoteForThisAsk * BigInt(10) ** baseAssetDecimals * pricePrecision) /
                         (BigInt(10) ** quoteAssetDecimals * ask.price);
 
-                    if (ask.liquidity < minSize) throw new Error('Calculated ask liquidity is less than minSize.');
+                    if (ask.liquidity < minSize) minSizeError = true;
                 }
             } else {
                 totalBaseLiquidity = BigInt(0);
@@ -498,7 +511,7 @@ export abstract class PositionViewer {
                 const baseForThisAsk = ((numAsks - BigInt(i)) * baseInFarthestAsk * farthestAskPrice) / ask.price;
                 ask.liquidity = (baseForThisAsk * sizePrecision) / BigInt(10) ** baseAssetDecimals;
 
-                if (ask.liquidity < minSize) throw new Error('Calculated ask liquidity is less than minSize.');
+                if (ask.liquidity < minSize) minSizeError = true;
 
                 const quoteForThisAsk =
                     (baseForThisAsk * ask.price * BigInt(10) ** quoteAssetDecimals) /
@@ -514,13 +527,11 @@ export abstract class PositionViewer {
                     // Farthest bid (i=0) gets 1 unit, closest gets numBids units.
                     const quoteMultiplier = BigInt(i + 1);
                     const quoteForThisBid = quoteUnitForBids * quoteMultiplier;
-                    bid.liquidity = this.normalizeBidSize(
-                        bid.price,
-                        sizePrecision,
+                    const bidSize =
                         (quoteForThisBid * pricePrecision * sizePrecision) /
-                            (BigInt(10) ** quoteAssetDecimals * bid.price),
-                    );
-                    if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
+                        (BigInt(10) ** quoteAssetDecimals * bid.price);
+                    bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
+                    if (bidSize < minSize) minSizeError = true;
                 }
             } else {
                 totalQuoteLiquidity = BigInt(0);
@@ -532,12 +543,15 @@ export abstract class PositionViewer {
         // #############################################################
         // # 3. Finalize and Return
         // #############################################################
-        return {
+        const batchLPDetails = {
             bids: bids.sort((a, b) => Number(b.price - a.price)), // highest price first
             asks: asks.sort((a, b) => Number(a.price - b.price)), // lowest price first
             quoteLiquidity: quoteLiquidity ?? BigInt(0),
             baseLiquidity: baseLiquidity ?? BigInt(0),
+            minSizeError: minSizeError,
         };
+        const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+        return { batchLPDetails, lpSummary };
     }
 
     /**
@@ -558,7 +572,7 @@ export abstract class PositionViewer {
      * @param quoteLiquidity - The total liquidity for one side (e.g., asks), denominated in the quote asset.
      * @param baseLiquidity - The total liquidity for one side (e.g., asks), denominated in the base asset.
      * @param maxPricePoints - The maximum number of price points to prevent infinite loop.
-     * @returns A promise resolving to an object with bid and ask positions and total liquidity.
+     * @returns A promise resolving to an object with bid and ask positions, total liquidity, and LP summary.
      */
     static async getBidAskBatchLPDetails(
         minFeesBps: bigint,
@@ -574,7 +588,7 @@ export abstract class PositionViewer {
         quoteLiquidity?: bigint, // In quote asset decimals
         baseLiquidity?: bigint, // In base asset decimals
         maxPricePoints?: number, // max number price points to prevent infinite loop
-    ): Promise<BatchLPDetails> {
+    ): Promise<BatchLPResult> {
         if (maxPricePoints !== undefined) {
             // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
             // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
@@ -658,6 +672,7 @@ export abstract class PositionViewer {
         // # 2. Distribute Liquidity
         // #############################################################
 
+        let minSizeError = false;
         if (quoteLiquidity !== undefined) {
             // Scenario A: Total Quote Liquidity is provided.
             // It's assumed this quote amount is for EACH side of the book.
@@ -680,12 +695,10 @@ export abstract class PositionViewer {
                 const quoteMultiplier = numBids - BigInt(i);
                 const quoteForThisBid = quoteUnitForBids * quoteMultiplier;
 
-                bid.liquidity = this.normalizeBidSize(
-                    bid.price,
-                    sizePrecision,
-                    (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price),
-                );
-                if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
+                const bidSize =
+                    (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price);
+                bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
+                if (bid.liquidity < minSize) minSizeError = true;
             }
 
             if (numAsks > 0) {
@@ -700,7 +713,7 @@ export abstract class PositionViewer {
                     ask.liquidity =
                         (quoteForThisAsk * pricePrecision * sizePrecision) /
                         (BigInt(10) ** quoteAssetDecimals * ask.price);
-                    if (ask.liquidity < minSize) throw new Error('Calculated ask liquidity is less than minSize.');
+                    if (ask.liquidity < minSize) minSizeError = true;
 
                     // We only need to calculate the resulting base liquidity from one side (asks).
                     totalBaseLiquidity +=
@@ -748,7 +761,7 @@ export abstract class PositionViewer {
                 const baseForThisAsk = (baseInClosestAsk * BigInt(i + 1) * closestAskPrice) / ask.price;
 
                 ask.liquidity = (baseForThisAsk * sizePrecision) / BigInt(10) ** baseAssetDecimals;
-                if (ask.liquidity < minSize) throw new Error('Calculated ask liquidity is less than minSize.');
+                if (ask.liquidity < minSize) minSizeError = true;
 
                 // Calculate the corresponding quote amount and add to the total.
                 const quoteForThisAsk =
@@ -767,13 +780,11 @@ export abstract class PositionViewer {
                     const quoteMultiplier = numBids - BigInt(i);
                     const quoteForThisBid = quoteUnitForBids * quoteMultiplier;
 
-                    bid.liquidity = this.normalizeBidSize(
-                        bid.price,
-                        sizePrecision,
+                    const bidSize =
                         (quoteForThisBid * pricePrecision * sizePrecision) /
-                            (BigInt(10) ** quoteAssetDecimals * bid.price),
-                    );
-                    if (bid.liquidity < minSize) throw new Error('Calculated bid liquidity is less than minSize.');
+                        (BigInt(10) ** quoteAssetDecimals * bid.price);
+                    bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
+                    if (bid.liquidity < minSize) minSizeError = true;
                 }
             } else {
                 totalQuoteLiquidity = BigInt(0);
@@ -786,12 +797,15 @@ export abstract class PositionViewer {
         // # 3. Finalize and Return
         // #############################################################
         // Sort bids descending (highest price first) and asks ascending (lowest price first).
-        return {
+        const batchLPDetails = {
             bids: bids.sort((a, b) => Number(b.price - a.price)),
             asks: asks.sort((a, b) => Number(a.price - b.price)),
             quoteLiquidity: quoteLiquidity ?? BigInt(0),
             baseLiquidity: baseLiquidity ?? BigInt(0),
+            minSizeError: minSizeError,
         };
+        const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+        return { batchLPDetails, lpSummary };
     }
 
     static normalizeBidSize(price: bigint, sizePrecision: bigint, bidSize: bigint): bigint {
