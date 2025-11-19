@@ -32,13 +32,13 @@ export abstract class PositionViewer {
      * @param tickSize - The size of a tick.
      * @returns A promise that resolves to the first ask price. If no ask price is found, returns 0.
      */
-    static async getFirstAskPrice(
+    static getFirstAskPrice(
         minFeesBps: bigint,
         startPrice: bigint,
         endPrice: bigint,
         bestAskPrice: bigint,
         tickSize: bigint,
-    ): Promise<bigint> {
+    ): bigint {
         if (endPrice < bestAskPrice) {
             return BigInt(0);
         }
