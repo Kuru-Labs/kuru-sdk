@@ -49,7 +49,7 @@ export async function getLPSummaryForMinSize(batchLPDetails: BatchLPDetails, min
     return {
         bids: scaledBids,
         asks: scaledAsks,
-        quoteLiquidity: batchLPDetails.quoteLiquidity,
-        baseLiquidity: batchLPDetails.baseLiquidity,
+        quoteLiquidity: scaledBids.reduce((sum, bid) => sum + bid.liquidity, BigInt(0)),
+        baseLiquidity: scaledAsks.reduce((sum, ask) => sum + ask.liquidity, BigInt(0)),
     };
 }
