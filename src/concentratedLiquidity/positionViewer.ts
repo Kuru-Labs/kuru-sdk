@@ -113,7 +113,9 @@ export abstract class PositionViewer {
             throw new Error('quoteLiquidity and baseLiquidity cannot be undefined');
         }
 
-        startPrice = startPrice - (startPrice % tickSize);
+        if (startPrice % tickSize !== BigInt(0)) {
+            startPrice = startPrice - (startPrice % tickSize) + tickSize;
+        }
 
         const bids: Position[] = [];
         const asks: Position[] = [];
@@ -408,7 +410,9 @@ export abstract class PositionViewer {
             throw new Error('Either quoteLiquidity or baseLiquidity must be provided.');
         }
 
-        startPrice = startPrice - (startPrice % tickSize);
+        if (startPrice % tickSize !== BigInt(0)) {
+            startPrice = startPrice - (startPrice % tickSize) + tickSize;
+        }
 
         const bids: Position[] = [];
         const asks: Position[] = [];
@@ -648,7 +652,9 @@ export abstract class PositionViewer {
         }
 
         // Align the starting price with the nearest tick.
-        startPrice = startPrice - (startPrice % tickSize);
+        if (startPrice % tickSize !== BigInt(0)) {
+            startPrice = startPrice - (startPrice % tickSize) + tickSize;
+        }
 
         const bids: Position[] = [];
         const asks: Position[] = [];
@@ -728,7 +734,7 @@ export abstract class PositionViewer {
                 const bidSize =
                     (quoteForThisBid * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price);
                 bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
-                if (bid.liquidity < minSize) minSizeError = true;
+                if (bidSize < minSize) minSizeError = true;
             }
 
             if (numAsks > 0) {
@@ -814,7 +820,7 @@ export abstract class PositionViewer {
                         (quoteForThisBid * pricePrecision * sizePrecision) /
                         (BigInt(10) ** quoteAssetDecimals * bid.price);
                     bid.liquidity = this.normalizeBidSize(bid.price, sizePrecision, bidSize);
-                    if (bid.liquidity < minSize) minSizeError = true;
+                    if (bidSize < minSize) minSizeError = true;
                 }
             } else {
                 totalQuoteLiquidity = BigInt(0);
