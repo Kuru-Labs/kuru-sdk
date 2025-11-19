@@ -7,7 +7,13 @@ export interface LPSummary {
     baseLiquidity: bigint;
 }
 
-export async function getLPSummaryForMinSize(batchLPDetails: BatchLPDetails, minSize: bigint): Promise<LPSummary> {
+export async function getLPSummaryForMinSize(
+    batchLPDetails: BatchLPDetails,
+    minSize: bigint,
+    sizePrecision: bigint,
+    pricePrecision: bigint,
+    quoteAssetDecimals: bigint,
+): Promise<LPSummary> {
     // Find smallest liquidity in bids
     let smallestBidSize: bigint | null = null;
     for (const bid of batchLPDetails.bids) {
@@ -29,9 +35,11 @@ export async function getLPSummaryForMinSize(batchLPDetails: BatchLPDetails, min
         if (smallestBidSize === null || smallestBidSize === BigInt(0)) {
             return { ...position };
         }
+        const minSizeAtPrice =
+            (minSize * position.price * BigInt(10) ** quoteAssetDecimals) / (pricePrecision * sizePrecision);
         return {
             ...position,
-            liquidity: (position.liquidity * minSize) / smallestBidSize,
+            liquidity: (position.liquidity * minSizeAtPrice) / smallestBidSize,
         };
     });
 

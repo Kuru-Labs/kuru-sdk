@@ -200,7 +200,13 @@ export abstract class PositionViewer {
                 baseLiquidity: baseLiquidity ?? BigInt(0),
                 minSizeError: minSizeError,
             };
-            const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+            const lpSummary = await getLPSummaryForMinSize(
+                batchLPDetails,
+                minSize,
+                sizePrecision,
+                pricePrecision,
+                quoteAssetDecimals,
+            );
             return { batchLPDetails, lpSummary };
         }
 
@@ -278,7 +284,13 @@ export abstract class PositionViewer {
                 baseLiquidity: baseLiquidity,
                 minSizeError: minSizeError,
             };
-            const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+            const lpSummary = await getLPSummaryForMinSize(
+                batchLPDetails,
+                minSize,
+                sizePrecision,
+                pricePrecision,
+                quoteAssetDecimals,
+            );
             return { batchLPDetails, lpSummary };
         }
 
@@ -307,7 +319,13 @@ export abstract class PositionViewer {
                 baseLiquidity: baseLiquidity ?? BigInt(0),
                 minSizeError: minSizeError,
             };
-            const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+            const lpSummary = await getLPSummaryForMinSize(
+                batchLPDetails,
+                minSize,
+                sizePrecision,
+                pricePrecision,
+                quoteAssetDecimals,
+            );
             return { batchLPDetails, lpSummary };
         }
 
@@ -318,7 +336,13 @@ export abstract class PositionViewer {
             baseLiquidity: BigInt(0),
             minSizeError: minSizeError,
         };
-        const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+        const lpSummary = await getLPSummaryForMinSize(
+            batchLPDetails,
+            minSize,
+            sizePrecision,
+            pricePrecision,
+            quoteAssetDecimals,
+        );
         return { batchLPDetails, lpSummary };
     }
 
@@ -550,7 +574,13 @@ export abstract class PositionViewer {
             baseLiquidity: baseLiquidity ?? BigInt(0),
             minSizeError: minSizeError,
         };
-        const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+        const lpSummary = await getLPSummaryForMinSize(
+            batchLPDetails,
+            minSize,
+            sizePrecision,
+            pricePrecision,
+            quoteAssetDecimals,
+        );
         return { batchLPDetails, lpSummary };
     }
 
@@ -804,7 +834,13 @@ export abstract class PositionViewer {
             baseLiquidity: baseLiquidity ?? BigInt(0),
             minSizeError: minSizeError,
         };
-        const lpSummary = await getLPSummaryForMinSize(batchLPDetails, minSize);
+        const lpSummary = await getLPSummaryForMinSize(
+            batchLPDetails,
+            minSize,
+            sizePrecision,
+            pricePrecision,
+            quoteAssetDecimals,
+        );
         return { batchLPDetails, lpSummary };
     }
 
