@@ -3,6 +3,7 @@ import { BatchLPDetails } from './positionViewer';
 import { TransactionOptions } from '../types';
 import orderbookAbi from '../../abi/OrderBook.json';
 import buildTransactionRequest from '../utils/txConfig';
+import { computeBalanceSlotForMarginAccount } from '../utils/storageSlots';
 
 export abstract class PositionProvider {
     /**
@@ -49,19 +50,19 @@ export abstract class PositionProvider {
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
+        const { prices, flipPrices, sizes, isBuy } = PositionProvider.buildBatchInputs(batchDetails);
+
+        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const data = orderbookInterface.encodeFunctionData('batchProvisionLiquidity', [
+            prices,
+            flipPrices,
+            sizes,
+            isBuy,
+            false,
+        ]);
+
         if (!marginAccountAddress || !assetsDeposit) {
             // no state overrides; rely on provided txOptions.gasLimit
-            const { prices, flipPrices, sizes, isBuy } = PositionProvider.buildBatchInputs(batchDetails);
-
-            const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-            const data = orderbookInterface.encodeFunctionData('batchProvisionLiquidity', [
-                prices,
-                flipPrices,
-                sizes,
-                isBuy,
-                false,
-            ]);
-
             return buildTransactionRequest({
                 from: address,
                 to: contractAddress,
@@ -71,10 +72,10 @@ export abstract class PositionProvider {
             });
         }
 
-        const { gasLimit, data } = await PositionProvider.estimateGas(
+        const { gasLimit } = await PositionProvider.estimateGas(
             signer,
             contractAddress,
-            batchDetails,
+            data,
             marginAccountAddress,
             assetsDeposit,
         );
@@ -91,30 +92,6 @@ export abstract class PositionProvider {
     }
 
     /**
-     * @dev Computes the storage key inside an ERC-20 balance mapping for the given owner/token pair.
-     * @param owner Address whose balance slot should be derived.
-     * @param token Token contract address whose balance mapping we are targeting.
-     * @returns Keccak hash representing the intermediate account key within the ERC-20 `balances` mapping.
-     */
-    static computeAccountKey(owner: string, token: string): string {
-        return ethers.utils.keccak256(ethers.utils.solidityPack(['address', 'address'], [owner, token]));
-    }
-
-    /**
-     * @dev Derives the full storage slot for `balanceOf(owner)` of a token contract.
-     * @param owner Address whose balance slot is required.
-     * @param token Token contract address whose `balanceOf` storage slot is computed.
-     * @returns Storage slot (keccak hash) that points to the owner's balance within the ERC-20 contract.
-     */
-    static computeBalanceSlot(owner: string, token: string): string {
-        const accountKey = this.computeAccountKey(owner, token);
-        const slotBytes = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.constants.One), 32);
-        return ethers.utils.keccak256(
-            ethers.utils.concat([ethers.utils.arrayify(accountKey), ethers.utils.arrayify(slotBytes)]),
-        );
-    }
-
-    /**
      * @dev Encodes `batchProvisionLiquidity` and estimates gas, optionally applying margin-account state overrides.
      * @param signer Signer used to perform the estimation request.
      * @param contractAddress Target order book contract that receives the call.
@@ -126,7 +103,7 @@ export abstract class PositionProvider {
     static async estimateGas(
         signer: ethers.Signer,
         contractAddress: string,
-        batchDetails: BatchLPDetails,
+        data: string,
         marginAccountAddress: string,
         assetsDeposit: Record<string, { amount: BigNumber; decimal: number }>,
     ): Promise<{ gasLimit: BigNumber; data: string }> {
@@ -137,24 +114,13 @@ export abstract class PositionProvider {
         }
 
         const from = await signer.getAddress();
-        const { prices, flipPrices, sizes, isBuy } = PositionProvider.buildBatchInputs(batchDetails);
-
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-        const data = orderbookInterface.encodeFunctionData('batchProvisionLiquidity', [
-            prices,
-            flipPrices,
-            sizes,
-            isBuy,
-            false,
-        ]);
-
         const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
 
         for (const [tokenAddress, { amount }] of Object.entries(assetsDeposit)) {
             if (tokenAddress === ethers.constants.AddressZero) {
                 continue;
             }
-            const balanceSlot = PositionProvider.computeBalanceSlot(marginAccountAddress, tokenAddress);
+            const balanceSlot = computeBalanceSlotForMarginAccount(marginAccountAddress, tokenAddress);
             const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
 
             stateOverrides[tokenAddress] = {

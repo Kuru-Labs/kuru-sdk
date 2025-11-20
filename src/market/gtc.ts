@@ -8,7 +8,7 @@ import { MarketParams, LIMIT, TransactionOptions } from '../types';
 // ============ Config Imports ============
 import orderbookAbi from '../../abi/OrderBook.json';
 import buildTransactionRequest from '../utils/txConfig';
-
+import { computeBalanceSlotForMarginAccount } from '../utils/storageSlots';
 export abstract class GTC {
     /**
      * @dev Places a limit order (buy or sell) on the order book.
@@ -58,30 +58,6 @@ export abstract class GTC {
     }
 
     /**
-     * @dev Computes the storage key used by ERC-20 contracts for a user's balance mapping.
-     * @param owner - The address whose balance slot should be derived.
-     * @param token - The token contract address.
-     * @returns Keccak hash representing the account key inside the ERC-20 `balances` mapping.
-     */
-    static computeAccountKey(owner: string, token: string): string {
-        return ethers.utils.keccak256(ethers.utils.solidityPack(['address', 'address'], [owner, token]));
-    }
-
-    /**
-     * @dev Calculates the full storage slot for an ERC-20 `balanceOf(owner)` entry.
-     * @param owner - The address whose balance slot is needed.
-     * @param token - The token contract address.
-     * @returns Storage slot (keccak hash) for the `balanceOf(owner)` inside the token contract.
-     */
-    static computeBalanceSlot(owner: string, token: string): string {
-        const accountKey = this.computeAccountKey(owner, token);
-        const slotBytes = ethers.utils.hexZeroPad(ethers.utils.hexlify(ethers.constants.One), 32);
-        return ethers.utils.keccak256(
-            ethers.utils.concat([ethers.utils.arrayify(accountKey), ethers.utils.arrayify(slotBytes)]),
-        );
-    }
-
-    /**
      * @dev Constructs a transaction for a buy limit order.
      * @param signer - The signer instance.
      * @param orderbookAddress - The address of the order book contract.
@@ -114,7 +90,7 @@ export abstract class GTC {
 
         if (marginAccountAddress && tokenAddress && amount) {
             // do estimateGas with state overrides
-            const balanceSlot = this.computeBalanceSlot(marginAccountAddress, tokenAddress);
+            const balanceSlot = computeBalanceSlotForMarginAccount(marginAccountAddress, tokenAddress);
             const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
 
             const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
@@ -198,7 +174,7 @@ export abstract class GTC {
 
         if (marginAccountAddress && tokenAddress && amount) {
             // do estimateGas with state overrides
-            const balanceSlot = this.computeBalanceSlot(marginAccountAddress, tokenAddress);
+            const balanceSlot = computeBalanceSlotForMarginAccount(marginAccountAddress, tokenAddress);
             const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
 
             const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
