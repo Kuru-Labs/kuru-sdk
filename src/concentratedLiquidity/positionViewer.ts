@@ -43,7 +43,9 @@ export abstract class PositionViewer {
             return BigInt(0);
         }
 
-        startPrice = startPrice - (startPrice % tickSize);
+        if (startPrice % tickSize !== BigInt(0)) {
+            startPrice = startPrice - (startPrice % tickSize) + tickSize;
+        }
 
         while (startPrice < bestAskPrice) {
             var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
