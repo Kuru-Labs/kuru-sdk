@@ -61,6 +61,7 @@ export abstract class PositionProvider {
      * @returns A promise that resolves to the transaction request object
      */
     static async constructBatchProvisionTransaction(
+        provider: ethers.providers.JsonRpcProvider,
         signer: ethers.Signer,
         contractAddress: string,
         batchDetails: BatchLPDetails,
@@ -112,6 +113,7 @@ export abstract class PositionProvider {
         }
 
         const { gasLimit } = await PositionProvider.estimateGas(
+            provider,
             signer,
             contractAddress,
             data,
@@ -139,13 +141,13 @@ export abstract class PositionProvider {
      * @returns Buffered gas limit and the encoded calldata so callers can reuse both when constructing the transaction.
      */
     static async estimateGas(
+        provider: ethers.providers.JsonRpcProvider,
         signer: ethers.Signer,
         contractAddress: string,
         data: string,
         marginAccountAddress: string,
         assetsDeposit: Record<string, { amount: BigNumber; decimal: number }>,
     ): Promise<{ gasLimit: BigNumber; data: string }> {
-        const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
         const address = await signer.getAddress();
 
         if (!provider) {
@@ -162,9 +164,12 @@ export abstract class PositionProvider {
                 stateDiff: {},
             },
         };
-
+        let value = ethers.BigNumber.from(0);
         // Build stateDiff for margin account with all token balances
         for (const [tokenAddress] of Object.entries(assetsDeposit)) {
+            if (tokenAddress === ethers.constants.AddressZero) {
+                value = assetsDeposit[tokenAddress].amount;
+            }
             const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
             stateOverrides[marginAccountAddress].stateDiff = {
                 ...stateOverrides[marginAccountAddress].stateDiff,
@@ -177,6 +182,7 @@ export abstract class PositionProvider {
                 from,
                 to: contractAddress,
                 data,
+                value: value.toHexString(),
             },
             'latest',
             stateOverrides,

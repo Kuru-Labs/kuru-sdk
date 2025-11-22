@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { BigNumber, ContractReceipt, ethers } from 'ethers';
+import { BigNumber, ContractReceipt, ethers, providers } from 'ethers';
 
 // ============ Internal Imports ============
 import { LIMIT, MarketParams, TransactionOptions } from '../types';
@@ -23,6 +23,7 @@ export abstract class GTC {
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
     static async placeLimit(
+        provider: ethers.providers.JsonRpcProvider,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
@@ -38,8 +39,8 @@ export abstract class GTC {
         const sizeBn: BigNumber = ethers.utils.parseUnits(clippedSize, log10BigNumber(marketParams.sizePrecision));
 
         return order.isBuy
-            ? GTC.addBuyOrder(signer, orderbook, priceBn, sizeBn, order.postOnly, order.txOptions)
-            : GTC.addSellOrder(signer, orderbook, priceBn, sizeBn, order.postOnly, order.txOptions);
+            ? GTC.addBuyOrder(signer, orderbook, priceBn, sizeBn, order.postOnly, provider, order.txOptions)
+            : GTC.addSellOrder(signer, orderbook, priceBn, sizeBn, order.postOnly, provider, order.txOptions);
     }
 
     static async estimateGas(
@@ -77,21 +78,22 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
+        provider?: ethers.providers.JsonRpcProvider,
         txOptions?: TransactionOptions,
         marginAccountAddress?: string,
         tokenAddress?: string,
         amount?: BigNumber,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
-
-        const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
-        if (!provider) {
-            throw new Error('Signer must be connected to a provider to estimate gas.');
-        }
         let mergedTxOptions: TransactionOptions | undefined;
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('addBuyOrder', [price, size, postOnly]);
+
+        const value = tokenAddress === ethers.constants.AddressZero && amount ? amount : ethers.BigNumber.from(0);
+        if (!provider) {
+            throw new Error(' a separate provider is required to estimate gas.');
+        }
 
         if (marginAccountAddress && tokenAddress && amount) {
             // do estimateGas with state overrides
@@ -109,11 +111,13 @@ export abstract class GTC {
                     },
                 },
             };
+
             const estimatedGasHex = await provider.send('eth_estimateGas', [
                 {
                     from: address,
                     to: orderbookAddress,
                     data,
+                    value: value.toHexString(),
                 },
                 'latest',
                 stateOverrides,
@@ -133,6 +137,7 @@ export abstract class GTC {
                     from: address,
                     to: orderbookAddress,
                     data,
+                    value: value.toHexString(),
                 },
                 'latest',
             ]);
@@ -167,20 +172,23 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
+        provider?: ethers.providers.JsonRpcProvider,
         txOptions?: TransactionOptions,
         marginAccountAddress?: string,
         tokenAddress?: string,
         amount?: BigNumber,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
-        const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
-        if (!provider) {
-            throw new Error('Signer must be connected to a provider to estimate gas.');
-        }
+
         let mergedTxOptions: TransactionOptions | undefined;
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('addSellOrder', [price, size, postOnly]);
+
+        const value = tokenAddress === ethers.constants.AddressZero && amount ? amount : ethers.BigNumber.from(0);
+        if (!provider) {
+            throw new Error(' a separate provider is required to estimate gas.');
+        }
 
         if (marginAccountAddress && tokenAddress && amount) {
             // do estimateGas with state overrides
@@ -203,6 +211,7 @@ export abstract class GTC {
                     from: address,
                     to: orderbookAddress,
                     data,
+                    value: value.toHexString(),
                 },
                 'latest',
                 stateOverrides,
@@ -222,6 +231,7 @@ export abstract class GTC {
                     from: address,
                     to: orderbookAddress,
                     data,
+                    value: value.toHexString(),
                 },
                 'latest',
             ]);
@@ -249,6 +259,7 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
+        provider?: ethers.providers.JsonRpcProvider,
         txOptions?: TransactionOptions,
     ): Promise<ContractReceipt> {
         try {
@@ -258,6 +269,7 @@ export abstract class GTC {
                 price,
                 size,
                 postOnly,
+                provider,
                 txOptions,
             );
 
@@ -283,6 +295,7 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
+        provider?: ethers.providers.JsonRpcProvider,
         txOptions?: TransactionOptions,
     ): Promise<ContractReceipt> {
         try {
@@ -292,6 +305,7 @@ export abstract class GTC {
                 price,
                 size,
                 postOnly,
+                provider,
                 txOptions,
             );
 
