@@ -154,7 +154,6 @@ export abstract class PositionProvider {
             throw new Error('Signer must be connected to a provider to estimate gas.');
         }
 
-        const from = await signer.getAddress();
         const stateOverrides = {
             // Set sender balance to max to avoid balance issues
             [address]: {
@@ -164,12 +163,8 @@ export abstract class PositionProvider {
                 stateDiff: {},
             },
         };
-        let value = ethers.BigNumber.from(0);
         // Build stateDiff for margin account with all token balances
         for (const [tokenAddress] of Object.entries(assetsDeposit)) {
-            if (tokenAddress === ethers.constants.AddressZero) {
-                value = assetsDeposit[tokenAddress].amount;
-            }
             const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
             stateOverrides[marginAccountAddress].stateDiff = {
                 ...stateOverrides[marginAccountAddress].stateDiff,
@@ -179,10 +174,9 @@ export abstract class PositionProvider {
 
         const estimatedGasHex = await provider.send('eth_estimateGas', [
             {
-                from,
+                address,
                 to: contractAddress,
                 data,
-                value: value.toHexString(),
             },
             'latest',
             stateOverrides,
