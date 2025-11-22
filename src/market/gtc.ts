@@ -23,7 +23,6 @@ export abstract class GTC {
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
     static async placeLimit(
-        provider: ethers.providers.JsonRpcProvider,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
@@ -31,6 +30,7 @@ export abstract class GTC {
     ): Promise<ContractReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
         const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
+        const provider = signer.provider as ethers.providers.JsonRpcProvider;
 
         const clippedPrice = clipToDecimals(order.price, log10BigNumber(marketParams.pricePrecision));
         const clippedSize = clipToDecimals(order.size, log10BigNumber(marketParams.sizePrecision));
