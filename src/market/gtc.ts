@@ -97,10 +97,16 @@ export abstract class GTC {
             // do estimateGas with state overrides
             const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
 
-            const stateOverrides: Record<string, { stateDiff: Record<string, string> }> = {};
-            stateOverrides[marginAccountAddress] = {
-                stateDiff: {
-                    [balanceSlot]: PADDED_AMOUNT,
+            const stateOverrides: Record<string, any> = {
+                // Set sender balance to max to avoid balance issues
+                [address]: {
+                    balance: PADDED_AMOUNT,
+                },
+                // Override the margin account storage slot
+                [marginAccountAddress]: {
+                    stateDiff: {
+                        [balanceSlot]: PADDED_AMOUNT,
+                    },
                 },
             };
             const estimatedGasHex = await provider.send('eth_estimateGas', [
@@ -180,10 +186,16 @@ export abstract class GTC {
             // do estimateGas with state overrides
             const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
 
-            const stateOverrides: Record<string, { stateDiff: Record<string, string> }> = {};
-            stateOverrides[marginAccountAddress] = {
-                stateDiff: {
-                    [balanceSlot]: PADDED_AMOUNT,
+            const stateOverrides: Record<string, any> = {
+                // Set sender balance to max to avoid balance issues
+                [address]: {
+                    balance: PADDED_AMOUNT,
+                },
+                // Override the margin account storage slot
+                [marginAccountAddress]: {
+                    stateDiff: {
+                        [balanceSlot]: PADDED_AMOUNT,
+                    },
                 },
             };
             const estimatedGasHex = await provider.send('eth_estimateGas', [
