@@ -90,7 +90,6 @@ export abstract class GTC {
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('addBuyOrder', [price, size, postOnly]);
 
-        const value = tokenAddress === ethers.constants.AddressZero && amount ? amount : ethers.BigNumber.from(0);
         if (!provider) {
             throw new Error(' a separate provider is required to estimate gas.');
         }
@@ -117,7 +116,6 @@ export abstract class GTC {
                     from: address,
                     to: orderbookAddress,
                     data,
-                    value: value.toHexString(),
                 },
                 'latest',
                 stateOverrides,
@@ -137,7 +135,6 @@ export abstract class GTC {
                     from: address,
                     to: orderbookAddress,
                     data,
-                    value: value.toHexString(),
                 },
                 'latest',
             ]);
@@ -185,7 +182,6 @@ export abstract class GTC {
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('addSellOrder', [price, size, postOnly]);
 
-        const value = tokenAddress === ethers.constants.AddressZero && amount ? amount : ethers.BigNumber.from(0);
         if (!provider) {
             throw new Error(' a separate provider is required to estimate gas.');
         }
@@ -211,7 +207,6 @@ export abstract class GTC {
                     from: address,
                     to: orderbookAddress,
                     data,
-                    value: value.toHexString(),
                 },
                 'latest',
                 stateOverrides,
@@ -231,7 +226,6 @@ export abstract class GTC {
                     from: address,
                     to: orderbookAddress,
                     data,
-                    value: value.toHexString(),
                 },
                 'latest',
             ]);
