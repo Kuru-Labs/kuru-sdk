@@ -153,31 +153,24 @@ export abstract class PositionProvider {
         }
 
         const from = await signer.getAddress();
-        const stateOverrides: Record<string, any> = {
+        const stateOverrides = {
             // Set sender balance to max to avoid balance issues
             [address]: {
                 balance: PADDED_AMOUNT,
             },
+            [marginAccountAddress]: {
+                stateDiff: {},
+            },
         };
 
         // Build stateDiff for margin account with all token balances
-        const stateDiff: Record<string, string> = {};
         for (const [tokenAddress] of Object.entries(assetsDeposit)) {
-            if (tokenAddress === ethers.constants.AddressZero) {
-                continue;
-            }
             const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
-            stateDiff[balanceSlot] = PADDED_AMOUNT;
+            stateOverrides[marginAccountAddress].stateDiff = {
+                ...stateOverrides[marginAccountAddress].stateDiff,
+                [balanceSlot]: PADDED_AMOUNT,
+            };
         }
-
-        if (Object.keys(stateDiff).length === 0) {
-            throw new Error('assetsDeposit must contain at least one token to estimate gas with overrides.');
-        }
-
-        // Override the margin account storage slots
-        stateOverrides[marginAccountAddress] = {
-            stateDiff,
-        };
 
         const estimatedGasHex = await provider.send('eth_estimateGas', [
             {

@@ -97,7 +97,7 @@ export abstract class GTC {
             // do estimateGas with state overrides
             const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
 
-            const stateOverrides: Record<string, any> = {
+            const stateOverrides = {
                 // Set sender balance to max to avoid balance issues
                 [address]: {
                     balance: PADDED_AMOUNT,
@@ -186,7 +186,7 @@ export abstract class GTC {
             // do estimateGas with state overrides
             const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
 
-            const stateOverrides: Record<string, any> = {
+            const stateOverrides = {
                 // Set sender balance to max to avoid balance issues
                 [address]: {
                     balance: PADDED_AMOUNT,
