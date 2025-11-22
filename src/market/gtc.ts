@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { BigNumber, ContractReceipt, ethers, providers } from 'ethers';
+import { BigNumber, ContractReceipt, ethers } from 'ethers';
 
 // ============ Internal Imports ============
 import { LIMIT, MarketParams, TransactionOptions } from '../types';
