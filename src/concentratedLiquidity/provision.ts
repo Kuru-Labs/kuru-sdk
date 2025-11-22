@@ -5,6 +5,8 @@ import orderbookAbi from '../../abi/OrderBook.json';
 import buildTransactionRequest from '../utils/txConfig';
 import { computeBalanceSlotForMarginAccount } from '../utils/storageSlots';
 
+const PADDED_AMOUNT = ethers.constants.MaxUint256.toHexString();
+
 export abstract class PositionProvider {
     /**
      * @dev Submits a batch of liquidity positions to the contract
@@ -144,25 +146,24 @@ export abstract class PositionProvider {
         assetsDeposit: Record<string, { amount: BigNumber; decimal: number }>,
     ): Promise<{ gasLimit: BigNumber; data: string }> {
         const provider = signer.provider as ethers.providers.JsonRpcProvider | undefined;
+        const address = await signer.getAddress();
 
         if (!provider) {
             throw new Error('Signer must be connected to a provider to estimate gas.');
         }
 
         const from = await signer.getAddress();
-        const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
+        const stateOverrides: Record<string, { stateDiff: Record<string, string> }> = {};
 
-        for (const [tokenAddress, { amount }] of Object.entries(assetsDeposit)) {
+        for (const [tokenAddress] of Object.entries(assetsDeposit)) {
             if (tokenAddress === ethers.constants.AddressZero) {
                 continue;
             }
-            const balanceSlot = computeBalanceSlotForMarginAccount(marginAccountAddress, tokenAddress);
-            const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
+            const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
 
-            stateOverrides[tokenAddress] = {
-                storage: {
-                    ...(stateOverrides[tokenAddress]?.storage ?? {}),
-                    [balanceSlot]: paddedAmount,
+            stateOverrides[marginAccountAddress] = {
+                stateDiff: {
+                    [balanceSlot]: PADDED_AMOUNT,
                 },
             };
         }

@@ -10,6 +10,8 @@ import orderbookAbi from '../../abi/OrderBook.json';
 import buildTransactionRequest from '../utils/txConfig';
 import { computeBalanceSlotForMarginAccount } from '../utils/storageSlots';
 
+const PADDED_AMOUNT = ethers.constants.MaxUint256.toHexString();
+
 export abstract class GTC {
     /**
      * @dev Places a limit order (buy or sell) on the order book.
@@ -93,13 +95,12 @@ export abstract class GTC {
 
         if (marginAccountAddress && tokenAddress && amount) {
             // do estimateGas with state overrides
-            const balanceSlot = computeBalanceSlotForMarginAccount(marginAccountAddress, tokenAddress);
-            const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
+            const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
 
-            const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
-            stateOverrides[tokenAddress] = {
-                storage: {
-                    [balanceSlot]: paddedAmount,
+            const stateOverrides: Record<string, { stateDiff: Record<string, string> }> = {};
+            stateOverrides[marginAccountAddress] = {
+                stateDiff: {
+                    [balanceSlot]: PADDED_AMOUNT,
                 },
             };
             const estimatedGasHex = await provider.send('eth_estimateGas', [
@@ -177,13 +178,12 @@ export abstract class GTC {
 
         if (marginAccountAddress && tokenAddress && amount) {
             // do estimateGas with state overrides
-            const balanceSlot = computeBalanceSlotForMarginAccount(marginAccountAddress, tokenAddress);
-            const paddedAmount = ethers.utils.hexZeroPad(amount.toHexString(), 32);
+            const balanceSlot = computeBalanceSlotForMarginAccount(address, tokenAddress);
 
-            const stateOverrides: Record<string, { storage: Record<string, string> }> = {};
-            stateOverrides[tokenAddress] = {
-                storage: {
-                    [balanceSlot]: paddedAmount,
+            const stateOverrides: Record<string, { stateDiff: Record<string, string> }> = {};
+            stateOverrides[marginAccountAddress] = {
+                stateDiff: {
+                    [balanceSlot]: PADDED_AMOUNT,
                 },
             };
             const estimatedGasHex = await provider.send('eth_estimateGas', [
