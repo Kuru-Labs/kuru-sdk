@@ -169,6 +169,9 @@ export abstract class Vault {
     ): Promise<BigNumber> {
         const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(providerOrSigner, marketAddress);
         const price = vaultParams.vaultBestAsk;
+        if (price.eq(ethers.constants.MaxUint256)) {
+            throw new Error('Vault has no liquidity');
+        }
         const token1Decimals = await getTokenDecimals(marketParams.baseAssetAddress, providerOrSigner);
         const token2Decimals = await getTokenDecimals(marketParams.quoteAssetAddress, providerOrSigner);
         //amount2 = (amount1 * price * 10^token2Decimals) / (10^token1Decimals * 10^18)
@@ -194,6 +197,9 @@ export abstract class Vault {
     ): Promise<BigNumber> {
         const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(providerOrSigner, marketAddress);
         const price = vaultParams.vaultBestAsk;
+        if (price.eq(ethers.constants.MaxUint256)) {
+            throw new Error('Vault has no liquidity');
+        }
         const token1Decimals = await getTokenDecimals(marketParams.baseAssetAddress, providerOrSigner);
         const token2Decimals = await getTokenDecimals(marketParams.quoteAssetAddress, providerOrSigner);
         //amount1 = (amount2 * 10^token1Decimals * 10^18) / (price * 10^token2Decimals)
