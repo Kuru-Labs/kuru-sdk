@@ -1,4 +1,4 @@
-import { BatchLPDetails, Position } from './positionViewer';
+import { Position } from './positionViewer';
 
 export interface LPSummary {
     bids: Position[];
@@ -8,7 +8,8 @@ export interface LPSummary {
 }
 
 export async function getLPSummaryForMinSize(
-    batchLPDetails: BatchLPDetails,
+    bids: Position[],
+    asks: Position[],
     minSize: bigint,
     sizePrecision: bigint,
     pricePrecision: bigint,
@@ -16,7 +17,7 @@ export async function getLPSummaryForMinSize(
 ): Promise<LPSummary> {
     // Find smallest liquidity in bids
     let smallestBidSize: bigint | null = null;
-    for (const bid of batchLPDetails.bids) {
+    for (const bid of bids) {
         if (smallestBidSize === null || bid.liquidity < smallestBidSize) {
             smallestBidSize = bid.liquidity;
         }
@@ -24,14 +25,14 @@ export async function getLPSummaryForMinSize(
 
     // Find smallest liquidity in asks
     let smallestAskSize: bigint | null = null;
-    for (const ask of batchLPDetails.asks) {
+    for (const ask of asks) {
         if (smallestAskSize === null || ask.liquidity < smallestAskSize) {
             smallestAskSize = ask.liquidity;
         }
     }
 
     // Scale bids: replace smallest with minSize, scale others proportionally
-    const scaledBids: Position[] = batchLPDetails.bids.map((position) => {
+    const scaledBids: Position[] = bids.map((position) => {
         if (smallestBidSize === null || smallestBidSize === BigInt(0)) {
             return { ...position };
         }
@@ -44,7 +45,7 @@ export async function getLPSummaryForMinSize(
     });
 
     // Scale asks: replace smallest with minSize, scale others proportionally
-    const scaledAsks: Position[] = batchLPDetails.asks.map((position) => {
+    const scaledAsks: Position[] = asks.map((position) => {
         if (smallestAskSize === null || smallestAskSize === BigInt(0)) {
             return { ...position };
         }

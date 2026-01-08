@@ -1,4 +1,9 @@
 import { LPSummary, getLPSummaryForMinSize } from './lpSummary';
+import {
+    getBidsAndAsksForBidAskLiquidity,
+    getBidsAndAsksForCurveLiquidity,
+    getBidsAndAsksForSpotLiquidity,
+} from './orderCalculator';
 
 // ============ Types ============
 export interface BatchLPDetails {
@@ -119,57 +124,14 @@ export abstract class PositionViewer {
             startPrice = startPrice - (startPrice % tickSize) + tickSize;
         }
 
-        const bids: Position[] = [];
-        const asks: Position[] = [];
-
-        const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
-
-        while (startPrice < maxPrice) {
-            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            nextPrice = nextPrice - (nextPrice % tickSize);
-            if (nextPrice == startPrice) {
-                nextPrice = startPrice + tickSize;
-            }
-            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            flipPrice = flipPrice - (flipPrice % tickSize);
-            if (flipPrice == nextPrice) {
-                flipPrice = nextPrice + tickSize;
-            }
-
-            const position = {
-                price: startPrice,
-                liquidity: BigInt(0),
-                flipPrice,
-            };
-            bids.push(position);
-
-            startPrice = nextPrice;
-        }
-
-        while (startPrice < endPrice) {
-            var flipPrice =
-                (startPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
-                (FEE_DENOMINATOR * FEE_DENOMINATOR);
-            if (flipPrice == startPrice) {
-                flipPrice = startPrice - tickSize;
-            }
-            flipPrice = flipPrice - (flipPrice % tickSize);
-
-            const position = {
-                price: startPrice,
-                liquidity: BigInt(0),
-                flipPrice,
-            };
-            asks.push(position);
-
-            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            nextPrice = nextPrice - (nextPrice % tickSize);
-            if (nextPrice == startPrice) {
-                nextPrice = startPrice + tickSize;
-            }
-
-            startPrice = nextPrice;
-        }
+        const { bids, asks } = getBidsAndAsksForSpotLiquidity(
+            bestAskPrice,
+            endPrice,
+            startPrice,
+            tickSize,
+            minFeesBps,
+            FEE_DENOMINATOR,
+        );
 
         const numBids = BigInt(bids.length);
         const numAsks = BigInt(asks.length);
@@ -205,7 +167,8 @@ export abstract class PositionViewer {
                 minSizeError: minSizeError,
             };
             const lpSummary = await getLPSummaryForMinSize(
-                batchLPDetails,
+                bids,
+                asks,
                 minSize,
                 sizePrecision,
                 pricePrecision,
@@ -289,7 +252,8 @@ export abstract class PositionViewer {
                 minSizeError: minSizeError,
             };
             const lpSummary = await getLPSummaryForMinSize(
-                batchLPDetails,
+                bids,
+                asks,
                 minSize,
                 sizePrecision,
                 pricePrecision,
@@ -324,7 +288,8 @@ export abstract class PositionViewer {
                 minSizeError: minSizeError,
             };
             const lpSummary = await getLPSummaryForMinSize(
-                batchLPDetails,
+                bids,
+                asks,
                 minSize,
                 sizePrecision,
                 pricePrecision,
@@ -341,7 +306,8 @@ export abstract class PositionViewer {
             minSizeError: minSizeError,
         };
         const lpSummary = await getLPSummaryForMinSize(
-            batchLPDetails,
+            [],
+            [],
             minSize,
             sizePrecision,
             pricePrecision,
@@ -416,47 +382,14 @@ export abstract class PositionViewer {
             startPrice = startPrice - (startPrice % tickSize) + tickSize;
         }
 
-        const bids: Position[] = [];
-        const asks: Position[] = [];
-        let currentPrice = startPrice;
-
-        const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
-
-        // #############################################################
-        // # 1. Generate Bid & Ask Position Grids
-        // #############################################################
-        while (currentPrice < maxPrice) {
-            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            nextPrice = nextPrice - (nextPrice % tickSize);
-            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
-
-            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            flipPrice = flipPrice - (flipPrice % tickSize);
-            if (flipPrice == nextPrice) {
-                flipPrice = nextPrice + tickSize;
-            }
-
-            bids.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
-            currentPrice = nextPrice;
-        }
-
-        while (currentPrice < endPrice) {
-            var flipPrice =
-                (currentPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
-                (FEE_DENOMINATOR * FEE_DENOMINATOR);
-            if (flipPrice == currentPrice) {
-                flipPrice = currentPrice - tickSize;
-            }
-            flipPrice = flipPrice - (flipPrice % tickSize);
-
-            asks.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
-
-            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            nextPrice = nextPrice - (nextPrice % tickSize);
-            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
-
-            currentPrice = nextPrice;
-        }
+        const { bids, asks } = getBidsAndAsksForCurveLiquidity(
+            bestAskPrice,
+            endPrice,
+            startPrice,
+            tickSize,
+            minFeesBps,
+            FEE_DENOMINATOR,
+        );
 
         const numBids = BigInt(bids.length);
         const numAsks = BigInt(asks.length);
@@ -581,7 +514,8 @@ export abstract class PositionViewer {
             minSizeError: minSizeError,
         };
         const lpSummary = await getLPSummaryForMinSize(
-            batchLPDetails,
+            bids,
+            asks,
             minSize,
             sizePrecision,
             pricePrecision,
@@ -658,50 +592,14 @@ export abstract class PositionViewer {
             startPrice = startPrice - (startPrice % tickSize) + tickSize;
         }
 
-        const bids: Position[] = [];
-        const asks: Position[] = [];
-
-        let currentPrice = startPrice;
-
-        const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
-
-        // #############################################################
-        // # 1. Generate Bid & Ask Position Grids
-        // #############################################################
-        // Bids are created from the farthest price (startPrice) inwards to the center.
-        while (currentPrice < maxPrice) {
-            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            nextPrice = nextPrice - (nextPrice % tickSize);
-            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
-
-            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            flipPrice = flipPrice - (flipPrice % tickSize);
-            if (flipPrice == nextPrice) {
-                flipPrice = nextPrice + tickSize;
-            }
-
-            bids.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
-            currentPrice = nextPrice;
-        }
-
-        // Asks are created from the center outwards to the farthest price (endPrice).
-        while (currentPrice < endPrice) {
-            var flipPrice =
-                (currentPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
-                (FEE_DENOMINATOR * FEE_DENOMINATOR);
-            if (flipPrice == currentPrice) {
-                flipPrice = currentPrice - tickSize;
-            }
-            flipPrice = flipPrice - (flipPrice % tickSize);
-
-            asks.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
-
-            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
-            nextPrice = nextPrice - (nextPrice % tickSize);
-            if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
-
-            currentPrice = nextPrice;
-        }
+        const { bids, asks } = getBidsAndAsksForBidAskLiquidity(
+            bestAskPrice,
+            endPrice,
+            startPrice,
+            tickSize,
+            minFeesBps,
+            FEE_DENOMINATOR,
+        );
 
         const numBids = BigInt(bids.length);
         const numAsks = BigInt(asks.length);
@@ -843,7 +741,8 @@ export abstract class PositionViewer {
             minSizeError: minSizeError,
         };
         const lpSummary = await getLPSummaryForMinSize(
-            batchLPDetails,
+            bids,
+            asks,
             minSize,
             sizePrecision,
             pricePrecision,
