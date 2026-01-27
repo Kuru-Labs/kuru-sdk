@@ -22,7 +22,7 @@ const { rpcUrl, contractAddress } = KuruConfig;
 
         // Configuration for liquidity range
         const numPricePoints = 10; // Total number of orders (5 bids + 5 asks)
-        const feeTierBps = BigInt(30); // 0.30% fee tier in basis points
+        const feeTierPps = BigInt(3000); // 0.30% fee tier (3000 pps = 30 bps)
 
         console.log('Market Info:');
         console.log('Best Bid:', bestBid.toString());
@@ -32,14 +32,14 @@ const { rpcUrl, contractAddress } = KuruConfig;
         console.log('Tick Size:', tickSize.toString());
         console.log('\nLiquidity Configuration:');
         console.log('Number of Price Points:', numPricePoints);
-        console.log('Fee Tier (bps):', feeTierBps.toString());
+        console.log('Fee Tier (pps):', feeTierPps.toString());
 
         // Calculate price range
         const { minPrice, maxPrice } = getMinAndMaxPrice(
             BigInt(bestAskInPricePrecision.toString()),
             BigInt(tickSize.toString()),
             numPricePoints,
-            feeTierBps,
+            feeTierPps,
         );
 
         console.log('\nCalculated Price Range:');
@@ -50,7 +50,7 @@ const { rpcUrl, contractAddress } = KuruConfig;
         const precision = Number(pricePrecision.toString());
         const minPriceReadable = Number(minPrice) / precision;
         const maxPriceReadable = Number(maxPrice) / precision;
-        const bestAskReadable = Number(bestAsk) / (10 ** 18);
+        const bestAskReadable = Number(bestAsk) / 10 ** 18;
 
         console.log('\nHuman Readable:');
         console.log('Min Price:', minPriceReadable.toFixed(6));
@@ -64,4 +64,3 @@ const { rpcUrl, contractAddress } = KuruConfig;
         console.error('Error:', err);
     }
 })();
-

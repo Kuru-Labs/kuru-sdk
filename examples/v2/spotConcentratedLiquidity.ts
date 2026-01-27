@@ -35,7 +35,7 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
         }
 
         // Define price range for concentrated liquidity
-        const minFeesBps = BigInt(30); // 0.3% fee
+        const minFeesPps = BigInt(3000); // 0.3% fee (3000 pps = 30 bps)
         const startPrice = BigInt(6293270);
         const endPrice = BigInt(7791200);
 
@@ -48,7 +48,7 @@ Start Price:    ${ethers.utils.formatUnits(startPrice.toString(), KuruSdk.log10B
         // Get concentrated liquidity positions
         console.time('getSpotBatchLPDetails');
         const batchLPDetails = await KuruSdk.PositionViewer.getSpotBatchLPDetails(
-            minFeesBps,
+            minFeesPps,
             startPrice,
             endPrice,
             bestAskPrice,

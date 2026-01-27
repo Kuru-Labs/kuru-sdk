@@ -20,12 +20,12 @@ export interface BatchLPResult {
     lpSummary: LPSummary;
 }
 
-const FEE_DENOMINATOR = BigInt(10000);
+const FEE_DENOMINATOR = BigInt(1000000);
 
 export abstract class PositionViewer {
     /**
      * @dev Retrieves the first ask price for a given price range.
-     * @param minFeesBps - The minimum fees to filter positions by.
+     * @param minFeesPps - The minimum fees in percentage per point (100 pps = 1 bps).
      * @param startPrice - The lower bound of the price range to query.
      * @param endPrice - The upper bound of the price range to query.
      * @param bestAskPrice - The current market price.
@@ -33,7 +33,7 @@ export abstract class PositionViewer {
      * @returns A promise that resolves to the first ask price. If no ask price is found, returns 0.
      */
     static getFirstAskPrice(
-        minFeesBps: bigint,
+        minFeesPps: bigint,
         startPrice: bigint,
         endPrice: bigint,
         bestAskPrice: bigint,
@@ -48,7 +48,7 @@ export abstract class PositionViewer {
         }
 
         while (startPrice < bestAskPrice) {
-            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice == startPrice) {
                 nextPrice = startPrice + tickSize;
@@ -62,7 +62,7 @@ export abstract class PositionViewer {
 
     /**
      * @dev Retrieves details for concentrated liquidity positions within a price range.
-     * @param minFeesBps - The minimum fees to filter positions by.
+     * @param minFeesPps - The minimum fees in percentage per point (100 pps = 1 bps).
      * @param startPrice - The lower bound of the price range to query.
      * @param endPrice - The upper bound of the price range to query.
      * @param bestAskPrice - The current market price.
@@ -74,7 +74,7 @@ export abstract class PositionViewer {
      * @returns A promise that resolves to the batch order details and LP summary.
      */
     static async getSpotBatchLPDetails(
-        minFeesBps: bigint,
+        minFeesPps: bigint,
         startPrice: bigint,
         endPrice: bigint,
         bestAskPrice: bigint,
@@ -89,16 +89,16 @@ export abstract class PositionViewer {
         maxPricePoints?: number, // max number price points to prevent infinite loop
     ): Promise<BatchLPResult> {
         if (maxPricePoints !== undefined) {
-            // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
-            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
+            // Enforce that startPrice * (1 + minFeesPps/FEE_DENOMINATOR)^maxPricePoints < endPrice
+            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesPps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
 
             let maxReachablePrice = startPrice;
             let feeDenominatorPower = BigInt(1);
             let feeNumeratorPower = BigInt(1);
 
-            // Calculate (FEE_DENOMINATOR + minFeesBps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
+            // Calculate (FEE_DENOMINATOR + minFeesPps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
             for (let i = 0; i < maxPricePoints; i++) {
-                feeNumeratorPower *= FEE_DENOMINATOR + minFeesBps;
+                feeNumeratorPower *= FEE_DENOMINATOR + minFeesPps;
                 feeDenominatorPower *= FEE_DENOMINATOR;
             }
 
@@ -125,12 +125,12 @@ export abstract class PositionViewer {
         const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
 
         while (startPrice < maxPrice) {
-            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice == startPrice) {
                 nextPrice = startPrice + tickSize;
             }
-            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             flipPrice = flipPrice - (flipPrice % tickSize);
             if (flipPrice == nextPrice) {
                 flipPrice = nextPrice + tickSize;
@@ -148,7 +148,7 @@ export abstract class PositionViewer {
 
         while (startPrice < endPrice) {
             var flipPrice =
-                (startPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
+                (startPrice * (FEE_DENOMINATOR - minFeesPps) * (FEE_DENOMINATOR - minFeesPps)) /
                 (FEE_DENOMINATOR * FEE_DENOMINATOR);
             if (flipPrice == startPrice) {
                 flipPrice = startPrice - tickSize;
@@ -162,7 +162,7 @@ export abstract class PositionViewer {
             };
             asks.push(position);
 
-            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice == startPrice) {
                 nextPrice = startPrice + tickSize;
@@ -355,7 +355,7 @@ export abstract class PositionViewer {
      * The core principle is that quote currency value is lowest at the outer edges of the
      * price range and increases in an arithmetic progression towards the center (bestAskPrice).
      *
-     * @param minFeesBps - Minimum fees in basis points.
+     * @param minFeesPps - Minimum fees in percentage per point (100 pps = 1 bps).
      * @param startPrice - The starting price for placing liquidity (farthest bid).
      * @param endPrice - The ending price for placing liquidity (farthest ask).
      * @param bestAskPrice - The current best ask price on the market, which is the center of the curve.
@@ -371,7 +371,7 @@ export abstract class PositionViewer {
      * @returns A promise resolving to an object with bid and ask positions, total liquidity, and LP summary.
      */
     static async getCurveBatchLPDetails(
-        minFeesBps: bigint,
+        minFeesPps: bigint,
         startPrice: bigint,
         endPrice: bigint,
         bestAskPrice: bigint,
@@ -386,16 +386,16 @@ export abstract class PositionViewer {
         maxPricePoints?: number, // max number price points to prevent infinite loop
     ): Promise<BatchLPResult> {
         if (maxPricePoints !== undefined) {
-            // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
-            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
+            // Enforce that startPrice * (1 + minFeesPps/FEE_DENOMINATOR)^maxPricePoints < endPrice
+            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesPps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
 
             let maxReachablePrice = startPrice;
             let feeDenominatorPower = BigInt(1);
             let feeNumeratorPower = BigInt(1);
 
-            // Calculate (FEE_DENOMINATOR + minFeesBps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
+            // Calculate (FEE_DENOMINATOR + minFeesPps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
             for (let i = 0; i < maxPricePoints; i++) {
-                feeNumeratorPower *= FEE_DENOMINATOR + minFeesBps;
+                feeNumeratorPower *= FEE_DENOMINATOR + minFeesPps;
                 feeDenominatorPower *= FEE_DENOMINATOR;
             }
 
@@ -426,11 +426,11 @@ export abstract class PositionViewer {
         // # 1. Generate Bid & Ask Position Grids
         // #############################################################
         while (currentPrice < maxPrice) {
-            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
 
-            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             flipPrice = flipPrice - (flipPrice % tickSize);
             if (flipPrice == nextPrice) {
                 flipPrice = nextPrice + tickSize;
@@ -442,7 +442,7 @@ export abstract class PositionViewer {
 
         while (currentPrice < endPrice) {
             var flipPrice =
-                (currentPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
+                (currentPrice * (FEE_DENOMINATOR - minFeesPps) * (FEE_DENOMINATOR - minFeesPps)) /
                 (FEE_DENOMINATOR * FEE_DENOMINATOR);
             if (flipPrice == currentPrice) {
                 flipPrice = currentPrice - tickSize;
@@ -451,7 +451,7 @@ export abstract class PositionViewer {
 
             asks.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
 
-            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
 
@@ -595,7 +595,7 @@ export abstract class PositionViewer {
      * The core principle is that quote liquidity is lowest at the center (best bid/ask) and increases
      * linearly as prices move away from the spread.
      *
-     * @param minFeesBps - Minimum fees in basis points.
+     * @param minFeesPps - Minimum fees in percentage per point (100 pps = 1 bps).
      * @param startPrice - The starting price for placing liquidity (farthest bid).
      * @param endPrice - The ending price for placing liquidity (farthest ask).
      * @param bestAskPrice - The current best ask price, which defines the center of the spread.
@@ -611,7 +611,7 @@ export abstract class PositionViewer {
      * @returns A promise resolving to an object with bid and ask positions, total liquidity, and LP summary.
      */
     static async getBidAskBatchLPDetails(
-        minFeesBps: bigint,
+        minFeesPps: bigint,
         startPrice: bigint,
         endPrice: bigint,
         bestAskPrice: bigint,
@@ -626,16 +626,16 @@ export abstract class PositionViewer {
         maxPricePoints?: number, // max number price points to prevent infinite loop
     ): Promise<BatchLPResult> {
         if (maxPricePoints !== undefined) {
-            // Enforce that startPrice * (1 + minFeesBps/FEE_DENOMINATOR)^maxPricePoints < endPrice
-            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesBps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
+            // Enforce that startPrice * (1 + minFeesPps/FEE_DENOMINATOR)^maxPricePoints < endPrice
+            // This is equivalent to: startPrice * (FEE_DENOMINATOR + minFeesPps)^maxPricePoints < endPrice * FEE_DENOMINATOR^maxPricePoints
 
             let maxReachablePrice = startPrice;
             let feeDenominatorPower = BigInt(1);
             let feeNumeratorPower = BigInt(1);
 
-            // Calculate (FEE_DENOMINATOR + minFeesBps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
+            // Calculate (FEE_DENOMINATOR + minFeesPps)^maxPricePoints and FEE_DENOMINATOR^maxPricePoints
             for (let i = 0; i < maxPricePoints; i++) {
-                feeNumeratorPower *= FEE_DENOMINATOR + minFeesBps;
+                feeNumeratorPower *= FEE_DENOMINATOR + minFeesPps;
                 feeDenominatorPower *= FEE_DENOMINATOR;
             }
 
@@ -670,11 +670,11 @@ export abstract class PositionViewer {
         // #############################################################
         // Bids are created from the farthest price (startPrice) inwards to the center.
         while (currentPrice < maxPrice) {
-            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
 
-            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             flipPrice = flipPrice - (flipPrice % tickSize);
             if (flipPrice == nextPrice) {
                 flipPrice = nextPrice + tickSize;
@@ -687,7 +687,7 @@ export abstract class PositionViewer {
         // Asks are created from the center outwards to the farthest price (endPrice).
         while (currentPrice < endPrice) {
             var flipPrice =
-                (currentPrice * (FEE_DENOMINATOR - minFeesBps) * (FEE_DENOMINATOR - minFeesBps)) /
+                (currentPrice * (FEE_DENOMINATOR - minFeesPps) * (FEE_DENOMINATOR - minFeesPps)) /
                 (FEE_DENOMINATOR * FEE_DENOMINATOR);
             if (flipPrice == currentPrice) {
                 flipPrice = currentPrice - tickSize;
@@ -696,7 +696,7 @@ export abstract class PositionViewer {
 
             asks.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
 
-            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesPps)) / FEE_DENOMINATOR;
             nextPrice = nextPrice - (nextPrice % tickSize);
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
 

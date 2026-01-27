@@ -32,14 +32,14 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
                 : BigInt(0);
 
         // Define price range for concentrated liquidity
-        const minFeesBps = BigInt(100); // 0.3% fee
+        const minFeesPps = BigInt(10000); // 1% fee (10000 pps = 100 bps)
         const startPrice = bestAskPrice - (bestAskPrice * BigInt(10)) / BigInt(100); // 1% below best ask
         const endPrice = bestAskPrice + (bestAskPrice * BigInt(10)) / BigInt(100); // 1% above best ask
 
         // Get concentrated liquidity positions with curve distribution
         console.time('getCurveBatchLPDetails');
         const batchLPDetails = await KuruSdk.PositionViewer.getCurveBatchLPDetails(
-            minFeesBps,
+            minFeesPps,
             startPrice,
             endPrice,
             bestAskPrice,
