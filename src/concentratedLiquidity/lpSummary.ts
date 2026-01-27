@@ -62,7 +62,7 @@ export async function getLPSummaryForMinSize(
     };
 }
 
-const FEE_DENOMINATOR = BigInt(10000);
+const FEE_DENOMINATOR = BigInt(1000000);
 
 /**
  * Calculates the minimum and maximum price range for symmetric liquidity provision
@@ -71,14 +71,14 @@ const FEE_DENOMINATOR = BigInt(10000);
  * @param bestAskPrice - The current best ask price in price precision
  * @param tickSize - The tick size in price precision
  * @param numPricePoints - Total number of price points (will be split evenly for bids and asks)
- * @param feeTierBps - Fee tier in basis points (e.g., 30 for 0.30%)
+ * @param feeTierPps - Fee tier in percentage per point (100 pps = 1 bps, e.g., 3000 for 0.30%)
  * @returns Object with minPrice and maxPrice in price precision
  */
 export function getMinAndMaxPrice(
     bestAskPrice: bigint,
     tickSize: bigint,
     numPricePoints: number,
-    feeTierBps: bigint,
+    feeTierPps: bigint,
 ): { minPrice: bigint; maxPrice: bigint } {
     // Split price points evenly between bids and asks
     const pointsPerSide = Math.floor(numPricePoints / 2);
@@ -92,7 +92,7 @@ export function getMinAndMaxPrice(
     // to reach the last ask price
     let maxPrice = bestAskPrice;
     for (let i = 0; i < pointsPerSide - 1; i++) {
-        let nextPrice = (maxPrice * (FEE_DENOMINATOR + feeTierBps)) / FEE_DENOMINATOR;
+        let nextPrice = (maxPrice * (FEE_DENOMINATOR + feeTierPps)) / FEE_DENOMINATOR;
         // Align to tick size
         nextPrice = nextPrice - (nextPrice % tickSize);
         // If price didn't change after alignment, move up by one tick
@@ -113,8 +113,8 @@ export function getMinAndMaxPrice(
     // We already have the first bid, so we need (pointsPerSide - 1) more steps
     for (let i = 0; i < pointsPerSide - 1; i++) {
         // To go backwards, we divide by (1 + fee), which is equivalent to:
-        // prevPrice = (currentPrice * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feeTierBps)
-        let prevPrice = (minPrice * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feeTierBps);
+        // prevPrice = (currentPrice * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feeTierPps)
+        let prevPrice = (minPrice * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feeTierPps);
         // Align to tick size
         prevPrice = prevPrice - (prevPrice % tickSize);
         // If price didn't change after alignment, move down by one tick

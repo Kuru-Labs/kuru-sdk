@@ -26,14 +26,14 @@ const { rpcUrl, contractAddress } = KuruConfig;
         }
 
         // Define price range for concentrated liquidity
-        const minFeesBps = BigInt(30); // 0.3% fee
+        const minFeesPps = BigInt(3000); // 0.3% fee (3000 pps = 30 bps)
         const startPrice = bestAskPrice - (bestAskPrice * BigInt(1)) / BigInt(100); // 1% below best ask
         const endPrice = bestAskPrice + (bestAskPrice * BigInt(1)) / BigInt(100); // 1% above best ask
 
         // Get concentrated liquidity positions with bid-ask distribution
         console.time('getBidAskBatchLPDetails');
         const batchLPDetails = await KuruSdk.PositionViewer.getBidAskBatchLPDetails(
-            minFeesBps,
+            minFeesPps,
             startPrice,
             endPrice,
             bestAskPrice,
