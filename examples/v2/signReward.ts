@@ -24,13 +24,9 @@ async function main() {
 
     const recipientAddress = userAddress;
 
-    // Get the current nonce for the recipient
-    const currentNonce = await RewardVault.getNonce(rewardVaultAddress, recipientAddress, provider);
-    console.log('Current Nonce:', currentNonce);
-
-    // Next nonce should be currentNonce + 1
-    const nextNonce = (BigInt(currentNonce) + BigInt(1)).toString();
-    console.log('Next Nonce:', nextNonce);
+    // The nonce is a unique reward identifier for this recipient. For a
+    // one-reward-per-epoch program, the epoch ID can be used directly.
+    const rewardNonce = '12';
 
     // Create a reward for native token (ETH)
     const nativeReward: Reward = {
@@ -38,7 +34,7 @@ async function main() {
         rewardType: RewardType.NATIVE_OR_ERC20,
         token: ethers.constants.AddressZero, // address(0) for native token
         amount: ethers.utils.parseEther('1.0').toString(), // 1 ETH
-        nonce: nextNonce,
+        nonce: rewardNonce,
     };
 
     console.log('\nReward Details:');
@@ -60,7 +56,7 @@ async function main() {
         signature: signature,
     };
     console.log(JSON.stringify(signedRewardOutput, null, 2));
-    console.log('\nAdd the signature to config.json as "signedReward"');
+    console.log('\nStore both the reward and signature in the claims API response.');
 }
 
 // Run the example
