@@ -12,6 +12,12 @@ export enum RewardType {
     ERC1155 = 2,
 }
 
+export enum RewardStatus {
+    UNCLAIMED = 0,
+    CLAIMED = 1,
+    INVALIDATED = 2,
+}
+
 export interface Reward {
     recipient: string;
     rewardType: RewardType;
@@ -21,6 +27,54 @@ export interface Reward {
 }
 
 export class RewardVault {
+    /**
+     * Claim a single reward
+     * @param claimContractAddress The address of the claim contract
+     * @param reward The reward to claim
+     * @param signature The reward signer's EIP-712 signature
+     * @param signer The signer submitting the transaction
+     * @returns The transaction receipt
+     */
+    static async claimReward(
+        claimContractAddress: string,
+        reward: Reward,
+        signature: string,
+        signer: ethers.Signer,
+    ): Promise<ContractReceipt> {
+        const rewardVaultContract = new ethers.Contract(claimContractAddress, rewardVaultAbi.abi, signer);
+        const tx = await rewardVaultContract.verifyAndClaimReward(reward, signature);
+        return tx.wait();
+    }
+
+    /**
+     * Construct a transaction to claim a single reward
+     * @param claimContractAddress The address of the claim contract
+     * @param reward The reward to claim
+     * @param signature The reward signer's EIP-712 signature
+     * @param signer The signer submitting the transaction
+     * @param txOptions Optional transaction overrides
+     * @returns The transaction request
+     */
+    static async constructClaimRewardTransaction(
+        claimContractAddress: string,
+        reward: Reward,
+        signature: string,
+        signer: ethers.Signer,
+        txOptions?: TransactionOptions,
+    ): Promise<ethers.providers.TransactionRequest> {
+        const address = await signer.getAddress();
+        const rewardVaultInterface = new ethers.utils.Interface(rewardVaultAbi.abi);
+        const data = rewardVaultInterface.encodeFunctionData('verifyAndClaimReward', [reward, signature]);
+
+        return buildTransactionRequest({
+            to: claimContractAddress,
+            from: address,
+            data,
+            txOptions,
+            signer,
+        });
+    }
+
     /**
      * Claim multiple rewards
      * @param claimContractAddress The address of the claim contract
@@ -158,5 +212,57 @@ export class RewardVault {
         const rewardVaultContract = new ethers.Contract(contractAddress, rewardVaultAbi.abi, provider);
         const nonce = await rewardVaultContract.getNonce(recipient);
         return nonce.toString();
+    }
+
+    /**
+     * Check whether a specific reward has been claimed
+     * @param contractAddress The RewardVault contract address
+     * @param recipient The reward recipient
+     * @param nonce The reward identifier; it does not need to be claimed sequentially
+     * @param provider The provider to use for the call
+     */
+    static async hasClaimed(
+        contractAddress: string,
+        recipient: string,
+        nonce: string,
+        provider: ethers.providers.Provider,
+    ): Promise<boolean> {
+        const rewardVaultContract = new ethers.Contract(contractAddress, rewardVaultAbi.abi, provider);
+        return rewardVaultContract.hasClaimed(recipient, nonce);
+    }
+
+    /**
+     * Get the status of a specific reward
+     * @param contractAddress The RewardVault contract address
+     * @param recipient The reward recipient
+     * @param nonce The reward identifier
+     * @param provider The provider to use for the call
+     */
+    static async getRewardStatus(
+        contractAddress: string,
+        recipient: string,
+        nonce: string,
+        provider: ethers.providers.Provider,
+    ): Promise<RewardStatus> {
+        const rewardVaultContract = new ethers.Contract(contractAddress, rewardVaultAbi.abi, provider);
+        const status = await rewardVaultContract.getRewardStatus(recipient, nonce);
+        return ethers.BigNumber.from(status).toNumber() as RewardStatus;
+    }
+
+    /**
+     * Check whether a specific reward has been invalidated
+     * @param contractAddress The RewardVault contract address
+     * @param recipient The reward recipient
+     * @param nonce The reward identifier
+     * @param provider The provider to use for the call
+     */
+    static async isRewardInvalidated(
+        contractAddress: string,
+        recipient: string,
+        nonce: string,
+        provider: ethers.providers.Provider,
+    ): Promise<boolean> {
+        const rewardVaultContract = new ethers.Contract(contractAddress, rewardVaultAbi.abi, provider);
+        return rewardVaultContract.isRewardInvalidated(recipient, nonce);
     }
 }

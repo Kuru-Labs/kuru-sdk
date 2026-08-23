@@ -18,25 +18,22 @@ async function main() {
     console.log('User Address:', userAddress);
     console.log('Contract Address:', rewardVaultAddress);
 
-    // ============ Get Nonce ============
-    const nonce = await RewardVault.getNonce(rewardVaultAddress, userAddress, provider);
-    console.log('Current Nonce:', nonce);
+    // This reward and signature would normally come from the claims API. The
+    // nonce is a unique reward identifier; an epoch ID can be used when each
+    // recipient receives at most one reward per epoch.
+    const reward: Reward = {
+        recipient: userAddress,
+        rewardType: RewardType.NATIVE_OR_ERC20,
+        token: ethers.constants.AddressZero,
+        amount: ethers.utils.parseEther('1.0').toString(),
+        nonce: '12',
+    };
 
-    const nextNonce = (BigInt(nonce) + BigInt(1)).toString();
-
-    // ============ Example Signed Rewards ============
-    // These would typically come from your backend/API after signing
-    const rewards: Reward[] = [
-        {
-            recipient: userAddress,
-            rewardType: RewardType.NATIVE_OR_ERC20,
-            token: ethers.constants.AddressZero,
-            amount: ethers.utils.parseEther('1.0').toString(),
-            nonce: nextNonce,
-        },
-    ];
-
-    const signatures: string[] = [signedReward];
+    const alreadyClaimed = await RewardVault.hasClaimed(rewardVaultAddress, userAddress, reward.nonce, provider);
+    if (alreadyClaimed) {
+        console.log('Reward has already been claimed.');
+        return;
+    }
 
     // ============ Check Current Balance ============
     console.log('\n========== Before Claim ==========');
@@ -45,10 +42,10 @@ async function main() {
 
     // ============ Claim Rewards ============
     console.log('\n========== Claiming Rewards ==========');
-    console.log(`Claiming ${rewards.length} rewards...`);
+    console.log(`Claiming reward ${reward.nonce}...`);
 
     try {
-        const receipt = await RewardVault.claimMultipleRewards(rewardVaultAddress, rewards, signatures, userWallet);
+        const receipt = await RewardVault.claimReward(rewardVaultAddress, reward, signedReward, userWallet);
 
         console.log('\n✅ Rewards claimed successfully!');
         console.log('Transaction Hash:', receipt.transactionHash);
@@ -63,7 +60,6 @@ async function main() {
                     console.log(`\nReward ${index + 1} Claimed:`);
                     console.log('  Recipient:', event.args?.recipient);
                     console.log('  Nonce:', event.args?.nonce.toString());
-                    console.log('  Reward Type:', event.args?.rewardType);
                     console.log('  Token:', event.args?.token);
                     console.log('  Amount:', event.args?.amount.toString());
                 }
@@ -84,8 +80,10 @@ async function main() {
             console.error('The signature is invalid or does not match the reward data.');
         } else if (error.message.includes('Unauthorized')) {
             console.error('The signature was not created by the authorized reward signer.');
-        } else if (error.message.includes('nonce')) {
-            console.error('The nonce is invalid. The reward may have already been claimed.');
+        } else if (error.message.includes('RewardAlreadyClaimed')) {
+            console.error('This reward has already been claimed.');
+        } else if (error.message.includes('RewardIsInvalidated')) {
+            console.error('This reward has been invalidated.');
         }
 
         throw error;
